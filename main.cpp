@@ -15,7 +15,6 @@ int main(int ac, char **av)
 		password = av[2];
 	}
 	Server irc(port, password);
-	irc.init();
 
 	return (0);
 }
