@@ -29,6 +29,7 @@ class Server
 		Server(std::string port, std::string password);
 		virtual ~Server();
 
+		void run(void);
 		void set(std::string key, std::string value);
 		std::string get(std::string key);
 
@@ -37,10 +38,11 @@ class Server
 		Server(Server const &src);
 		Server &operator=(Server const &src);
 
+		time_t last_ping;
 		std::string	_port;
 		std::string	_pass;
-		std::map<std::string, std::string> values;
-		std::vector<pollfd> fds;
+		std::map<std::string, std::string> _values;
+		std::vector<pollfd> _fds;
 };
 
 #endif

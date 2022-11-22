@@ -3,23 +3,34 @@
 Server::Server(std::string port, std::string password): _port(port), _pass(password)
 {
 
-	int sock;
+	int listened_sock;
 	// int sock(int domain, int type, int protocol);
 	// domain: PF_INET Protocoles Internet IPv4 ou PF_INET6 Protocoles Internet IPv6
 	// type: SOCK_STREAM Provides sequenced, reliable, two-way, connection-based byte streams. An out-of-band data transmission mechanism may be supported.
-	if ((sock = socket(PF_INET, SOCK_STREAM, getprotobyname("tcp")->p_proto)) == 0)
+	if ((listened_sock = socket(PF_INET, SOCK_STREAM, getprotobyname("tcp")->p_proto)) == 0)
 		throw Server::StderrException();
 
 	// int setsockopt(int sockfd, int level, int optname, const void *optval, socklen_t optlen);
 	// manipulate options for the socket referred to by the file descriptor sockfd
 	// SOL_SOCKET is the socket layer itself. It is used for options that are protocol independent.
 	// SO_REUSEADDR This option controls whether bind should permit reuse of local addresses for this socket. If you enable this option, you can actually have two sockets with the same Internet port number; but the system won’t allow you to use the two identically-named sockets in a way that would confuse the Internet. The reason for this option is that some higher-level Internet protocols, including FTP, require you to keep reusing the same port number.
+	/*
+	 *Sometimes, you might notice, you try to rerun a server and bind() fails, claiming “Address already in use.” What does that mean? Well, a little bit of a socket that was connected is still hanging around in the kernel, and it’s hogging the port. You can either wait for it to clear (a minute or so), or add code to your program allowing it to reuse the port, like this:
+	 */
 	int enable = 1; // CHECK ENABLE
-	if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &enable, sizeof(enable)))
+	if (setsockopt(listened_sock, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &enable, sizeof(enable)))
 		throw Server::StderrException();
 
-	// A COMPRENDRE ET ETUDIER
-	if (fcntl(sock, F_SETFL, O_NONBLOCK) < 0)
+	/*
+	 * int fcntl(int fd, int cmd, ... * arg *);
+	 * fcntl() performs one of the operations described below on the open file
+	 * descriptor fd.  The operation is determined by cmd. 
+	 * F_SETFL  Set the file status flags to the value specified by arg
+	 * Lots of functions block. accept() blocks. All the recv() functions block. The reason they can do this is because they're allowed to. When you first create the socket descriptor with socket(), the kernel sets it to blocking. If you don't want a socket to be blocking, you have to make a call to fcntl():
+	 * LIEN DU DESSOUS QUI DIT PLUTOT UTILISER SELECT QUE UTILISER NONBLOCK A VOIR SI SA FIT AVEC LE SUJET ON LAISSE COMME CA EN ATT
+	 *https://www.gta.ufrj.br/ensino/eel878/sockets/advanced.html#blocking 
+	*/
+	if (fcntl(listened_sock, F_SETFL, O_NONBLOCK) < 0)
 		throw Server::StderrException();
 
 	// (IPv4 only--see struct sockaddr_in6 for IPv6)
@@ -56,15 +67,18 @@ Server::Server(std::string port, std::string password): _port(port), _pass(passw
 	   Traditionally, this operation is called “assigning a name to a
 	   socket”.
 	*/
-	if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0)
+	if (bind(listened_sock, (struct sockaddr *)&addr, sizeof(addr)) < 0)
 		throw Server::StderrException();
 
-	if (listen(sock, addr.sin_port) < 0)
+	if (listen(listened_sock, addr.sin_port) < 0)
 		throw Server::StderrException();
 
-	fds.push_back(pollfd());
-	fds.back().fd = sock;
-	fds.back().events = POLLIN;
+	//on ajoute 1 elem pollfd sur notre vector (tableau) de pollfd
+	//on remplit notre struct avec notre sock et POLLIN pour dire qu'on veut
+	//etre avertit si on recoit des donnees sur cette socket
+	_fds.push_back(pollfd());
+	_fds.back().fd = listened_sock;
+	_fds.back().events = POLLIN;
 
 	this->set("user_mode", "aiwro");
 }
@@ -73,12 +87,64 @@ Server::~Server()
 {
 }
 
+void Server::run()
+{
+	// CA NE COMPILE PLUS C NORMAL IL Y A PLEIN DE FONCTIONS QUI MANQUE ICI
+	// METTRE SERVER RUN EN COMMENTAIRE PR COMPILER
+	//RAPPEL NOTRE _fds[0] C EST NOTRE LISTENED_SOCK
+
+
+	std::vector<irc::User *> users = getUsers();
+
+	// il fait quoi exactement avec son atoi de ping? config get j ai pas tout pige
+	int ping = atoi(config.get("ping").c_str());
+
+	/*
+	 * int poll(struct pollfd fds[], nfds_t nfds, int timeout);
+	 * fds is our array of information (which sockets to monitor for what),
+	 * nfds is the count of elements in the array, and timeout is a timeout in milliseconds.
+	 * It returns the number of elements in the array that have had an event occur.
+	 */
+	if (poll(&_fds[0], _fds.size(), (ping * 1000) / 10) == -1)
+		return;
+
+	if (std::time(0) - last_ping >= ping)
+	{
+		sendPing();
+		last_ping = std::time(0);
+	}
+	else
+	{
+	   //en gros on regarde dans les events POLLIN qu'on a recu, si c'est la 
+	   //socket 0 c est un nouvel utilisateur donc on appel un truc pour voir
+	   //si on va accept cet utilisateur tcheck mot de passe etc...
+	   //ELSE si c'est un autre socket qui POLLIN c est que c est un gars
+	   //qu'on a deja accepte donc on creer une fonction receive (ou autre nom) ou on va stocke
+	   //et traite les infos recus
+		if (_fds[0].revents == POLLIN)
+			acceptUser();
+		else
+			for (std::vector<pollfd>::iterator it = _fds.begin(); it != _fds.end(); ++it)
+				if ((*it).revents == POLLIN)
+					this->users[(*it).fd]->receive(this);
+	}
+	//on check si on doit pas supprimer des utilisateurs
+	for (std::vector<irc::User *>::iterator it = users.begin(); it != users.end(); ++it)
+		if ((*it)->getStatus() == DELETE)
+			delUser(*(*it));
+	//la je sais ap ce qu'il fait
+	users = getUsers();
+	for (std::vector<irc::User *>::iterator it = users.begin(); it != users.end(); ++it)
+		(*it)->push();
+	displayUsers();
+}
+
 void Server::set(std::string key, std::string value)
 {
-	values[key] = value;
+	_values[key] = value;
 }
 
 std::string Server::get(std::string key)
 {
-	return (values[key]);
+	return (_values[key]);
 }
