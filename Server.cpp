@@ -8,7 +8,7 @@ Server::Server(std::string port, std::string password): _port(port), _pass(passw
 	// domain: PF_INET Protocoles Internet IPv4 ou PF_INET6 Protocoles Internet IPv6
 	// type: SOCK_STREAM Provides sequenced, reliable, two-way, connection-based byte streams. An out-of-band data transmission mechanism may be supported.
 	if ((listened_sock = socket(PF_INET, SOCK_STREAM, getprotobyname("tcp")->p_proto)) == 0)
-		throw Server::StderrException();
+		throw Server::ErrnoEx();
 
 	// int setsockopt(int sockfd, int level, int optname, const void *optval, socklen_t optlen);
 	// manipulate options for the socket referred to by the file descriptor sockfd
@@ -19,7 +19,7 @@ Server::Server(std::string port, std::string password): _port(port), _pass(passw
 	 */
 	int enable = 1; // CHECK ENABLE
 	if (setsockopt(listened_sock, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &enable, sizeof(enable)))
-		throw Server::StderrException();
+		throw Server::ErrnoEx();
 
 	/*
 	 * int fcntl(int fd, int cmd, ... * arg *);
@@ -31,7 +31,7 @@ Server::Server(std::string port, std::string password): _port(port), _pass(passw
 	 *https://www.gta.ufrj.br/ensino/eel878/sockets/advanced.html#blocking 
 	*/
 	if (fcntl(listened_sock, F_SETFL, O_NONBLOCK) < 0)
-		throw Server::StderrException();
+		throw Server::ErrnoEx();
 
 	// (IPv4 only--see struct sockaddr_in6 for IPv6)
 	/*
@@ -68,11 +68,11 @@ Server::Server(std::string port, std::string password): _port(port), _pass(passw
 	   socket”.
 	*/
 	if (bind(listened_sock, (struct sockaddr *)&addr, sizeof(addr)) < 0)
-		throw Server::StderrException();
+		throw Server::ErrnoEx();
 
 	//10 est le nombre max de clients à faire la queue
 	if (listen(listened_sock, 10) < 0)
-		throw Server::StderrException();
+		throw Server::ErrnoEx();
 
 	std::cout << "IRC server has been initialized" << std::endl;
 	std::cout << "Waiting for clients" << std::endl;
@@ -92,32 +92,71 @@ Server::~Server()
 {
 }
 
+void Server::check_new_client()
+{
+	//int shutdown(int sockfd, int how);
+	// The shutdown() call causes all or part of a full-duplex
+    //  connection on the socket associated with sockfd to be shut down.
+	//If how is SHUT_RD, further receptions will be disallowed
+	//donc en gros on dit qu'on prendra plus de nouveaux clients a notre
+	//listened socket
+	if (_clients.size == MAX_CLIENTS) 
+		if (shutdown(_fds[0].fd, SHUT_RD) == -1)
+			throw Server::ErrnoEx();
+	struct sockaddr_in addr;
+	// j ai pas compris la ligne d apres
+	socklen_t sock_len = sizeof(addr);
+	int new_client_sock = accept(_fds[0].fd, (struct sockaddr *)&addr, &sock_len);
+	if (new_client_sock == -1)
+		throw Server::ErrnoEx();
+	// et donc la ils creent le nouveau client qu'ils rajoutent a la map de clients
+	_clients[new_client_sock] =  // new User(fd, address);
+	// je sais pas exactement ce qu ils font la
+	// parce que comment ils accedent a ce que la new client sock leur a envoye?
+	// et ils testent juste length() bref j ai pas compris mais en tout
+	// cas suite a ca ils mettent statut register 
+	if (!config.get("password").length())
+		users[fd]->setStatus(REGISTER);
+	//on l'ajoute a notre vector de struct pollfd en ecoute
+	_fds.push_back(pollfd());
+	_fds.back().fd = fd;
+	_fds.back().events = POLLIN;
+}
+
 void Server::run()
 {
-	std::vector<Client *> clients = getClients();
 
-
-/*
 	// CA NE COMPILE PLUS C NORMAL IL Y A PLEIN DE FONCTIONS QUI MANQUE ICI
 	// METTRE SERVER RUN EN COMMENTAIRE PR COMPILER
 	//RAPPEL NOTRE _fds[0] C EST NOTRE LISTENED_SOCK
 
-//on a pas encore créé nos users, il faut faire une classe User et tout et c'est long sa mere
-	std::vector<User *> users = getUsers();
+	//valen si jamais t avais pas capte des qu'ils sortent des valeurs de leur
+	//cul avec get mes couilles c'est des trucs qu'ils definissent dans un fichier
+	//dans un dossier configs a la racine de leur repo voila moi j avais pas capte
+	//et ca m a casse le cul mdr
+	//moi je remplace tout leur truc par des gros define dans server.hpp
+	//j ai vu que t avais deja trouve une valeur max dans netdb, t'as lu un truc
+	//qui fallait utilise celle la?
 
-	// il fait quoi exactement avec son atoi de ping? config get j ai pas tout pige
-	int ping = atoi(config.get("ping").c_str());
+	// ces zinzins remplissent leur vector de client avec getclient qui
+	// trouve ces clients dans un map 
+	std::vector<Client *> clients = getClients();
 
-	
 	 // int poll(struct pollfd fds[], nfds_t nfds, int timeout);
 	 //fds is our array of information (which sockets to monitor for what),
 	 //nfds is the count of elements in the array, and timeout is a timeout in milliseconds.
 	 //It returns the number of elements in the array that have had an event occur.
-	 
+	// de ce que je comprends si jamais notre poll sur notre fd listen se branle trop
+	// on se casse de server::run on retourne dans leur main qui relance la boucle
+	// donc on reviendra ici jusqu'a ce qu' on est quelque chose
+	// mtn le probleme de leur truc c est que si il y a un autre type de bug ca 
+	// renvoie aussi -1 et on gere pas l erreur
 	if (poll(&_fds[0], _fds.size(), (ping * 1000) / 10) == -1)
 		return;
 
-	if (std::time(0) - last_ping >= ping)
+	//irc deco les clients qui repondent pas a leur ping a temps ca doit 
+	//etre un truc en rapport
+	if (std::time(0) - last_ping >= PING)
 	{
 		sendPing();
 		last_ping = std::time(0);
@@ -128,14 +167,15 @@ void Server::run()
 	   //socket 0 c est un nouvel utilisateur donc on appel un truc pour voir
 	   //si on va accept cet utilisateur tcheck mot de passe etc...
 	   //ELSE si c'est un autre socket qui POLLIN c est que c est un gars
-	   //qu'on a deja accepte donc on creer une fonction receive (ou autre nom) ou on va stocke
+	   //qu'on a deja accepte donc on creer une fonction recieve (ou autre nom) ou on va stocke
 	   //et traite les infos recus
 		if (_fds[0].revents == POLLIN)
-			acceptUser();
+			check_new_client();
 		else
 			for (std::vector<pollfd>::iterator it = _fds.begin(); it != _fds.end(); ++it)
 				if ((*it).revents == POLLIN)
-					this->users[(*it).fd]->receive(this);
+					_clients[(*it).fd]->receive(this);
+		//pr receive de clients j ai copie comme un chien dans client leur fonction
 	}
 	//on check si on doit pas supprimer des utilisateurs
 	for (std::vector<irc::User *>::iterator it = users.begin(); it != users.end(); ++it)
@@ -146,7 +186,6 @@ void Server::run()
 	for (std::vector<irc::User *>::iterator it = users.begin(); it != users.end(); ++it)
 		(*it)->push();
 	displayUsers();
-*/
 }
 
 //recupere la liste des clients dans un vector

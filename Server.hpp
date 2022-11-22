@@ -1,6 +1,8 @@
 #ifndef SERVER_HPP
 # define SERVER_HPP
 
+# define PING 60
+# define MAX_CLIENTS 60
 # include "Client.hpp"
 # include <iostream>
 # include <sys/types.h>
@@ -18,7 +20,8 @@
 
 class Server
 {
-	class StderrException : public std::exception
+	class ErrnoEx:
+	public std::exception
 	{
 		virtual const char* what() const throw()
 		{
@@ -44,7 +47,7 @@ class Server
 		std::string	_pass;
 		std::map<std::string, std::string> _values;
 		std::vector<pollfd> _fds;
-		std::map<int, Client *> clients;
+		std::map<int, Client *> _clients;
 		time_t last_ping;
 };
 
