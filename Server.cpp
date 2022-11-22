@@ -70,8 +70,12 @@ Server::Server(std::string port, std::string password): _port(port), _pass(passw
 	if (bind(listened_sock, (struct sockaddr *)&addr, sizeof(addr)) < 0)
 		throw Server::StderrException();
 
-	if (listen(listened_sock, addr.sin_port) < 0)
+	//10 est le nombre max de clients à faire la queue
+	if (listen(listened_sock, 10) < 0)
 		throw Server::StderrException();
+
+	std::cout << "IRC server has been initialized" << std::endl;
+	std::cout << "Waiting for clients" << std::endl;
 
 	//on ajoute 1 elem pollfd sur notre vector (tableau) de pollfd
 	//on remplit notre struct avec notre sock et POLLIN pour dire qu'on veut
@@ -81,6 +85,7 @@ Server::Server(std::string port, std::string password): _port(port), _pass(passw
 	_fds.back().events = POLLIN;
 
 	this->set("user_mode", "aiwro");
+//des set à rajouter
 }
 
 Server::~Server()
@@ -89,22 +94,26 @@ Server::~Server()
 
 void Server::run()
 {
+	std::vector<Client *> clients = getClients();
+
+
+/*
 	// CA NE COMPILE PLUS C NORMAL IL Y A PLEIN DE FONCTIONS QUI MANQUE ICI
 	// METTRE SERVER RUN EN COMMENTAIRE PR COMPILER
 	//RAPPEL NOTRE _fds[0] C EST NOTRE LISTENED_SOCK
 
-
-	std::vector<irc::User *> users = getUsers();
+//on a pas encore créé nos users, il faut faire une classe User et tout et c'est long sa mere
+	std::vector<User *> users = getUsers();
 
 	// il fait quoi exactement avec son atoi de ping? config get j ai pas tout pige
 	int ping = atoi(config.get("ping").c_str());
 
-	/*
-	 * int poll(struct pollfd fds[], nfds_t nfds, int timeout);
-	 * fds is our array of information (which sockets to monitor for what),
-	 * nfds is the count of elements in the array, and timeout is a timeout in milliseconds.
-	 * It returns the number of elements in the array that have had an event occur.
-	 */
+	
+	 // int poll(struct pollfd fds[], nfds_t nfds, int timeout);
+	 //fds is our array of information (which sockets to monitor for what),
+	 //nfds is the count of elements in the array, and timeout is a timeout in milliseconds.
+	 //It returns the number of elements in the array that have had an event occur.
+	 
 	if (poll(&_fds[0], _fds.size(), (ping * 1000) / 10) == -1)
 		return;
 
@@ -137,6 +146,16 @@ void Server::run()
 	for (std::vector<irc::User *>::iterator it = users.begin(); it != users.end(); ++it)
 		(*it)->push();
 	displayUsers();
+*/
+}
+
+//recupere la liste des clients dans un vector
+std::vector<Client *> Server::getClients()
+{
+	std::vector<Client *> clients = std::vector<Client *>();
+	for (std::map<int, Client *>::iterator it = this->clients.begin(); it != this->clients.end(); ++it)
+		clients.push_back(it->second);
+	return (clients);
 }
 
 void Server::set(std::string key, std::string value)

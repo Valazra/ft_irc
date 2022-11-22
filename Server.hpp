@@ -1,9 +1,7 @@
 #ifndef SERVER_HPP
 # define SERVER_HPP
 
-# include <poll.h>
-# include <vector>
-# include <errno.h>
+# include "Client.hpp"
 # include <iostream>
 # include <sys/types.h>
 # include <sys/socket.h>
@@ -13,6 +11,9 @@
 # include <string.h>
 # include <netdb.h>
 # include <stdlib.h>
+# include <poll.h>
+# include <vector>
+# include <errno.h>
 # include <map>
 
 class Server
@@ -29,20 +30,22 @@ class Server
 		Server(std::string port, std::string password);
 		virtual ~Server();
 
-		void run(void);
+		void run();
 		void set(std::string key, std::string value);
 		std::string get(std::string key);
+		std::vector<Client *> getClients();
 
 	private:
 		Server();
 		Server(Server const &src);
 		Server &operator=(Server const &src);
 
-		time_t last_ping;
 		std::string	_port;
 		std::string	_pass;
 		std::map<std::string, std::string> _values;
 		std::vector<pollfd> _fds;
+		std::map<int, Client *> clients;
+		time_t last_ping;
 };
 
 #endif
