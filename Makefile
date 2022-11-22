@@ -1,22 +1,20 @@
-NAME = ft_irc
+NAME = ircserv
 
 COMPILER = c++
 
-FLAGS = -Wall -Wextra -Werror #--std=c++98
-
-# INC_DIR = incs
+FLAGS = -Wall -Wextra -Werror -std=c++98
 
 SRCS = main.cpp Server.cpp
 
 OBJ = $(SRCS:.cpp=.o)
 
 %.o: %.cpp
-	$(COMPILER) $(FLAGS)-c $< -o $@ # -I. 
+	$(COMPILER) $(FLAGS) -c $< -o $@
 
 all:	$(NAME)
 
 $(NAME):	$(OBJ)
-		$(COMPILER) $(FLAGS) -o $(NAME) $(OBJ) # -I$(INC_DIR) 
+		$(COMPILER) $(FLAGS) -o $(NAME) $(OBJ)
 
 clean:
 		rm -rf $(OBJ)

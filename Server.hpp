@@ -12,24 +12,25 @@
 # include <string>
 # include <string.h>
 # include <netdb.h>
+# include <stdlib.h>
+# include <map>
 
 class Server
 {
-	class ExErrno:
-	public std::exception
+	class StderrException : public std::exception
 	{
-	  virtual const char* what() const throw()
-	  {
-		return (strerror(errno));
-	  }
+		virtual const char* what() const throw()
+		{
+			return (strerror(errno));
+		}
 	};
 
 	public:
 		Server(std::string port, std::string password);
 		virtual ~Server();
 
-	//	std::string const &getPort() const;
-	//	std::string const &getPassword() const;
+		void set(std::string key, std::string value);
+		std::string get(std::string key);
 
 	private:
 		Server();
@@ -38,6 +39,7 @@ class Server
 
 		std::string	_port;
 		std::string	_pass;
+		std::map<std::string, std::string> values;
 		std::vector<pollfd> fds;
 };
 
