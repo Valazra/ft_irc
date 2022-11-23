@@ -22,7 +22,8 @@
 
 class Server
 {
-	class ErrnoEx : public std::exception
+	class ErrnoEx:
+	public std::exception
 	{
 		virtual const char* what() const throw()
 		{

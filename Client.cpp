@@ -1,10 +1,10 @@
 #include "Client.hpp"
 #include "Server.hpp"
 
-Client::Client(int fd, struct sockaddr_in address):
-	_fd(fd), _hostname()
+Client::Client(int sock, struct sockaddr_in address):
+_sock(sock), _hostname(), _msg_finish(0), _status(TO_REGISTER)
 {
-	fcntl(fd, F_SETFL, O_NONBLOCK);
+	fcntl(sock, F_SETFL, O_NONBLOCK);
 	char hostname[NI_MAXHOST];
 
 	//getnameinfo(struct sockaddr *addr, socklen_t salen, char *host, size_t hostlen, char *serv, size_t servlen, int flags)
@@ -16,23 +16,54 @@ Client::Client(int fd, struct sockaddr_in address):
 		this->_hostname = hostname;
 }
 
+void Client::splitCommand()
+{
+	int i = 0;
+	int new_start = 0;
+	while (_msg[i] && _msg[i+1])
+	{
+		if (_msg[i] ==  '\r' && _msg[i + 1] == '\n')
+		{
+			_cmd.push_back(_msg.substr(new_start, i - new_start));
+			new_start = i + 2;
+			i += 2;
+		}
+		else
+			i++;
+	}
+}
 
 void Client::receive()
 {
 
-	char buffer[4097]; //à verif si on met ça ou pas
+	char buffer[MAX_CHAR + 1]; //à verif si on met ça ou pas
+	memset(buf, 0, MAX_CHAR);
+	if (_msg_finish)
+	{
+		_msg.clear();
+		_msg_finish = 0;
+	}
+	//exception error plutot que return?
 	ssize_t size;
-	if ((size = recv(_fd, &buffer, 4096, 0)) == -1)
+	if ((size = recv(_sock, &buffer, MAX_CHAR, 0)) == -1)
+	{
+		_msg.clear();
 		return;
-
+	}
 	if (size == 0)
 	{
-		_status = DELETE;
+		_msg.clear();
+		_status = DISCONNECT_ME;
 		return;
 	}
 	buffer[size] = 0;
 
-	this->_buffer += buffer;
+	_msg += buffer;
+	//check if msg if end with \r follow by \n
+	if (_msg.size() > 2 && *(_msg.end() - 2) ==  '\r' && *(_msg.end() - 1) == '\n')
+		_msg_finish = 1;
+	else
+		_msg_finish = 0;
 
 	//pas fini
 }
@@ -40,10 +71,16 @@ void Client::receive()
 
 Client::~Client()
 {
-	close(_fd);
+	close(_sock);
+}
+
+
+userStatus Client::getStatus()
+{
+	return (_status);
 }
 
 void Client::setStatus(UserStatus status)
 {
-	this->_status = status;	
+	_status = status;	
 }

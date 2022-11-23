@@ -1,6 +1,7 @@
 #ifndef CLIENT_HPP
 # define CLIENT_HPP
 
+# define MAX_CHAR 4096
 # include <iostream>
 # include <unistd.h>
 # include <sys/socket.h>
@@ -9,12 +10,13 @@
 # include <errno.h>
 # include <fcntl.h>
 
-enum UserStatus
+enum userStatus
 {
+	TO_REGISTER,
 	PASSWORD,
 	REGISTER,
 	ONLINE,
-	DELETE
+	DISCONNECT_ME
 };
 
 class Client
@@ -29,8 +31,9 @@ class Client
 	};
 
 	public:
-		Client(int fd, struct sockaddr_in address);
+		Client(int sock, struct sockaddr_in address);
 		~Client();
+		userStatus getStatus();
 		void setStatus(UserStatus status);
 		void receive();
 
@@ -39,10 +42,12 @@ class Client
 		Client(Client const &src);
 		Client &operator=(Client const & src);
 
-		int		_fd;
+		int		_sock;
 		std::string	_hostname;
 		UserStatus _status;
-		std::string _buffer;
+		std::string _msg;
+		vector<std::string> _cmd;
+		bool _msg_finish;
 	//des milliards de trucs à rajouter qu'on devra mettre dans le construct avec la struct sockaddr_in
 };
 

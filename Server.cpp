@@ -140,17 +140,16 @@ void Server::run()
 		else
 			for (std::vector<pollfd>::iterator it = _fds.begin(); it != _fds.end(); ++it)
 				if ((*it).revents == POLLIN)
-					_clients[(*it).fd]->receive();
+				{
+					_clients[(*it).sock]->receive();
+					if (_clients[(*it).sock]->getStatus == DISCONNECT_ME)
+						removeClient((*it).sock);
+					else if (_clients[(*it).sock]->getStatus == COMPLETE)
+					{
+						treat_complete_msg((*it).sock);
+					}
+				}
 	}
-	//on check si on doit pas supprimer des utilisateurs
-//	for (std::vector<irc::User *>::iterator it = users.begin(); it != users.end(); ++it)
-//		if ((*it)->getStatus() == DELETE)
-//			delUser(*(*it));
-	//la je sais ap ce qu'il fait
-//	users = getUsers();
-//	for (std::vector<irc::User *>::iterator it = users.begin(); it != users.end(); ++it)
-//		(*it)->push();
-//	displayUsers();
 }
 
 void Server::check_new_client()
@@ -179,6 +178,59 @@ void Server::check_new_client()
 	_fds.push_back(pollfd());
 	_fds.back().fd = new_client_sock;
 	_fds.back().events = POLLIN;
+}
+
+void	Server::registerClient(int const & client_sock)
+{
+	//ici
+	std::vector<std::string> full_command(client->getCommand());
+	std::vector<std::string> tmp = full_command;
+	while (full_command.empty() == false)
+	{
+
+		_command_book.find_command(full_command.front(), client, _all_clients, &_all_channels);
+		full_command.erase(full_command.begin());
+	}
+	if (client->getRegNick() == true && client->getRegUser() == true)
+	{
+		std::cout << GREEN << "********REGISTRATION SUCCESS for " << client->getNickname() << "**********" << RESET << std::endl;
+		client->setRegistration(true);
+		ft_reply("001", client, NULL, "");
+		ft_reply("002", client, NULL, "");
+		ft_reply("003", client, NULL, "");
+		ft_reply("004", client, NULL, "");
+		ft_reply(RPL_CUSTOMMOTD, client, NULL, _pokemon);
+		if (client->getRegPass() == true)
+		{
+			if (client->getPassword() != this->_password)
+			{
+				ft_error(ERR_PASSWDMISMATCH, client, NULL, "");
+				client->setRegPass(false);
+			}
+		}
+	}
+}
+
+void	Server::treat_complete_msg(int const & client_sock)
+{
+	// on regarde si on a plusieurs command dans notre _msg, on les split
+	// dans un vector de string du coup mtn on utilise _cmd
+	client->splitCommand();
+	if (client->getStatus == TO_REGISTER)
+		registerClient(client_sock);
+	else
+		_command_book.find_command(client->getCommand().front(), client, _all_clients, &_all_channels);
+	client->clearMessage();
+	client->clearCommand();
+	client->clearCommand();
+	this->find_to_kill();
+
+}
+
+void	Server::removeClient(int const & sock_to_remove)
+{
+	close(sock_to_remove);
+	_clients[sock_to_remove].erase();
 }
 
 //à faire
