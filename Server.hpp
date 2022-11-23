@@ -1,7 +1,6 @@
 #ifndef SERVER_HPP
 # define SERVER_HPP
 
-# include "Client.hpp"
 # include <iostream>
 # include <sys/types.h>
 # include <sys/socket.h>
@@ -16,6 +15,8 @@
 # include <errno.h>
 # include <vector>
 # include <map>
+# include "Client.hpp"
+# include "Command.hpp"
 
 # define PING 60
 # define MAX_CLIENTS 60

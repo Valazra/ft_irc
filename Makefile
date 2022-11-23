@@ -2,9 +2,9 @@ NAME = ircserv
 
 COMPILER = c++
 
-FLAGS = -Wall -Wextra -Werror -std=c++98
+FLAGS = -Wall -Wextra -Werror -g -std=c++98
 
-SRCS = main.cpp Server.cpp Client.cpp
+SRCS = main.cpp Server.cpp Client.cpp Command.cpp
 
 OBJ = $(SRCS:.cpp=.o)
 

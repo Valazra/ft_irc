@@ -20,19 +20,42 @@ void Client::splitCommand()
 {
 	int i = 0;
 	int new_start = 0;
+	int number_cmd = 0;
 	while (_msg[i] && _msg[i+1])
 	{
 		if (_msg[i] ==  '\r' && _msg[i + 1] == '\n')
 		{
-			_cmd.push_back(_msg.substr(new_start, i - new_start));
+			std::string tmp_cmd(_msg.substr(new_start, i - new_start));
 			new_start = i + 2;
 			i += 2;
+
+			int j = 0;
+			int split_start = 0;
+			int special_case = 0;
+			while (tmp_cmd[j])
+			{
+				if (tmp_cmd[j] == ' ' || !tmp_cmd[j + 1])
+				{
+					if (!tmp_cmd[j + 1] && tmp_cmd[j] != ' ')
+						special_case = 1;
+					std::string split_split(tmp_cmd.substr(split_start, (j + special_case) - split_start));
+					_cmd.push_back(std::vector<std::string>());
+					_cmd[number_cmd].push_back(split_split);
+					split_start = j + 1;
+				}
+				j++;
+			}
+			number_cmd++;
+
 		}
 		else
 			i++;
 	}
-	for (std::vector<std::string>::iterator it = _cmd.begin(); it != _cmd.end(); ++it)
-	std::cout << *it << "|" << std::endl;
+	for (std::vector<std::vector<std::string> >::iterator it = _cmd.begin(); it != _cmd.end(); ++it)
+	{
+		for (std::vector<std::string>::iterator it2 = it->begin(); it2 != it->end(); ++it2)
+			std::cout << "|" << *it2 << "|" << std::endl;
+	}
 
 }
 
@@ -82,6 +105,11 @@ Client::~Client()
 userStatus Client::getStatus()
 {
 	return (_status);
+}
+
+std::vector<std::vector<std::string> > Client::getCmd()
+{
+	return (_cmd);
 }
 
 bool Client::getMsgFinish()

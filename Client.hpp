@@ -14,10 +14,10 @@
 enum userStatus
 {
 	TO_REGISTER,
+	REMOVE_ME,
 	PASSWORD,
 	REGISTER,
-	ONLINE,
-	REMOVE_ME
+	ONLINE
 };
 
 class Client
@@ -37,6 +37,8 @@ class Client
 		userStatus getStatus();
 		void setStatus(userStatus status);
 		void receive();
+		std::vector<std::vector<std::string> > getCmd();
+		
 		bool getMsgFinish();
 		void splitCommand();
 
@@ -48,7 +50,8 @@ class Client
 		int		_sock;
 		std::string	_hostname;
 		std::string _msg;
-		std::vector<std::string> _cmd;
+		std::vector<std::vector<std::string> > _cmd;
+		std::vector<std::string> _cmd_split;
 		bool _msg_finish;
 		userStatus _status;
 	//des milliards de trucs à rajouter qu'on devra mettre dans le construct avec la struct sockaddr_in

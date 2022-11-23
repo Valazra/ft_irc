@@ -192,7 +192,9 @@ void	Server::treat_complete_msg(int const &client_sock)
 
 void	Server::registerClient(int const &client_sock)
 {
-(void)client_sock;
+	Command com(_clients[client_sock]);	
+}
+
 /*	std::vector<std::string> full_command(_client[client_sock]->getCommand());
 	std::vector<std::string> tmp = full_command;
 	while (full_command.empty() == false)
@@ -219,7 +221,6 @@ void	Server::registerClient(int const &client_sock)
 			}
 		}
 	}*/
-}
 
 void	Server::removeClient(int const &sock_to_remove)
 {

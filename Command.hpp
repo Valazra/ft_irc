@@ -2,22 +2,27 @@
 # define COMMAND_HPP
 
 #define CMD_ARGS std::vector<std::string> cmd
+
+#include "Server.hpp"
 class Command
 {
 	public:
-		Command();
+		Command(Client *client);
 		~Command();
 
 	private:
 		Command();
 		Command(Command const &src);
 		Command &operator=(Command const & src);
-		whoAmI(CMD_ARGS);
+		void whoAmI();
+		void registerAttempt();
 
 		void cap(CMD_ARGS);
 		void nick(CMD_ARGS);
 		void user(CMD_ARGS);
-		std::map<std::string, void(Commands::*)(CMD_ARGS)> _cmd_availables
+		std::map<std::string, void(Command::*)(CMD_ARGS)> _cmd_availables;
+
+		Client *_client;
 
 	};
 
