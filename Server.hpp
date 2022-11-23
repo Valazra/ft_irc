@@ -1,8 +1,6 @@
 #ifndef SERVER_HPP
 # define SERVER_HPP
 
-# define PING 60
-# define MAX_CLIENTS 60
 # include "Client.hpp"
 # include <iostream>
 # include <sys/types.h>
@@ -14,14 +12,17 @@
 # include <netdb.h>
 # include <stdlib.h>
 # include <poll.h>
-# include <vector>
+# include <ctime>
 # include <errno.h>
+# include <vector>
 # include <map>
+
+# define PING 60
+# define MAX_CLIENTS 60
 
 class Server
 {
-	class ErrnoEx:
-	public std::exception
+	class ErrnoEx : public std::exception
 	{
 		virtual const char* what() const throw()
 		{
@@ -35,8 +36,10 @@ class Server
 
 		void run();
 		void set(std::string key, std::string value);
-		std::string get(std::string key);
+		void check_new_client();
 		std::vector<Client *> getClients();
+		std::string get(std::string key);
+		void sendPing();
 
 	private:
 		Server();

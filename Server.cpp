@@ -92,42 +92,8 @@ Server::~Server()
 {
 }
 
-void Server::check_new_client()
-{
-	//int shutdown(int sockfd, int how);
-	// The shutdown() call causes all or part of a full-duplex
-    //  connection on the socket associated with sockfd to be shut down.
-	//If how is SHUT_RD, further receptions will be disallowed
-	//donc en gros on dit qu'on prendra plus de nouveaux clients a notre
-	//listened socket
-	if (_clients.size == MAX_CLIENTS) 
-		if (shutdown(_fds[0].fd, SHUT_RD) == -1)
-			throw Server::ErrnoEx();
-	struct sockaddr_in addr;
-	// j ai pas compris la ligne d apres
-	socklen_t sock_len = sizeof(addr);
-	int new_client_sock = accept(_fds[0].fd, (struct sockaddr *)&addr, &sock_len);
-	if (new_client_sock == -1)
-		throw Server::ErrnoEx();
-	// et donc la ils creent le nouveau client qu'ils rajoutent a la map de clients
-	_clients[new_client_sock] =  // new User(fd, address);
-	// je sais pas exactement ce qu ils font la
-	// parce que comment ils accedent a ce que la new client sock leur a envoye?
-	// et ils testent juste length() bref j ai pas compris mais en tout
-	// cas suite a ca ils mettent statut register 
-	if (!config.get("password").length())
-		users[fd]->setStatus(REGISTER);
-	//on l'ajoute a notre vector de struct pollfd en ecoute
-	_fds.push_back(pollfd());
-	_fds.back().fd = fd;
-	_fds.back().events = POLLIN;
-}
-
 void Server::run()
 {
-
-	// CA NE COMPILE PLUS C NORMAL IL Y A PLEIN DE FONCTIONS QUI MANQUE ICI
-	// METTRE SERVER RUN EN COMMENTAIRE PR COMPILER
 	//RAPPEL NOTRE _fds[0] C EST NOTRE LISTENED_SOCK
 
 	//valen si jamais t avais pas capte des qu'ils sortent des valeurs de leur
@@ -151,7 +117,7 @@ void Server::run()
 	// donc on reviendra ici jusqu'a ce qu' on est quelque chose
 	// mtn le probleme de leur truc c est que si il y a un autre type de bug ca 
 	// renvoie aussi -1 et on gere pas l erreur
-	if (poll(&_fds[0], _fds.size(), (ping * 1000) / 10) == -1)
+	if (poll(&_fds[0], _fds.size(), (PING * 1000) / 10) == -1)
 		return;
 
 	//irc deco les clients qui repondent pas a leur ping a temps ca doit 
@@ -174,25 +140,57 @@ void Server::run()
 		else
 			for (std::vector<pollfd>::iterator it = _fds.begin(); it != _fds.end(); ++it)
 				if ((*it).revents == POLLIN)
-					_clients[(*it).fd]->receive(this);
-		//pr receive de clients j ai copie comme un chien dans client leur fonction
+					_clients[(*it).fd]->receive();
 	}
 	//on check si on doit pas supprimer des utilisateurs
-	for (std::vector<irc::User *>::iterator it = users.begin(); it != users.end(); ++it)
-		if ((*it)->getStatus() == DELETE)
-			delUser(*(*it));
+//	for (std::vector<irc::User *>::iterator it = users.begin(); it != users.end(); ++it)
+//		if ((*it)->getStatus() == DELETE)
+//			delUser(*(*it));
 	//la je sais ap ce qu'il fait
-	users = getUsers();
-	for (std::vector<irc::User *>::iterator it = users.begin(); it != users.end(); ++it)
-		(*it)->push();
-	displayUsers();
+//	users = getUsers();
+//	for (std::vector<irc::User *>::iterator it = users.begin(); it != users.end(); ++it)
+//		(*it)->push();
+//	displayUsers();
+}
+
+void Server::check_new_client()
+{
+	//int shutdown(int sockfd, int how);
+	// The shutdown() call causes all or part of a full-duplex
+    //  connection on the socket associated with sockfd to be shut down.
+	//If how is SHUT_RD, further receptions will be disallowed
+	//donc en gros on dit qu'on prendra plus de nouveaux clients a notre
+	//listened socket
+	if (_clients.size() == MAX_CLIENTS) 
+		if (shutdown(_fds[0].fd, SHUT_RD) == -1)
+			throw Server::ErrnoEx();
+	struct sockaddr_in addr;
+	// j ai pas compris la ligne d apres
+	socklen_t sock_len = sizeof(addr);
+	int new_client_sock = accept(_fds[0].fd, (struct sockaddr *)&addr, &sock_len);
+	if (new_client_sock == -1)
+		throw Server::ErrnoEx();
+	// et donc la ils creent le nouveau client qu'ils rajoutent a la map de clients
+	_clients[new_client_sock] =   new Client(new_client_sock, addr);
+	// Si y'a pas de mdp on enregistre le client 
+	if (!(_pass.length())) 
+		_clients[new_client_sock]->setStatus(REGISTER);
+	//on l'ajoute a notre vector de struct pollfd en ecoute
+	_fds.push_back(pollfd());
+	_fds.back().fd = new_client_sock;
+	_fds.back().events = POLLIN;
+}
+
+//à faire
+void Server::sendPing()
+{
 }
 
 //recupere la liste des clients dans un vector
 std::vector<Client *> Server::getClients()
 {
 	std::vector<Client *> clients = std::vector<Client *>();
-	for (std::map<int, Client *>::iterator it = this->clients.begin(); it != this->clients.end(); ++it)
+	for (std::map<int, Client *>::iterator it = this->_clients.begin(); it != this->_clients.end(); ++it)
 		clients.push_back(it->second);
 	return (clients);
 }

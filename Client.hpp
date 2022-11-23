@@ -9,6 +9,14 @@
 # include <errno.h>
 # include <fcntl.h>
 
+enum UserStatus
+{
+	PASSWORD,
+	REGISTER,
+	ONLINE,
+	DELETE
+};
+
 class Client
 {
 	class ErrnoEx:
@@ -23,6 +31,8 @@ class Client
 	public:
 		Client(int fd, struct sockaddr_in address);
 		~Client();
+		void setStatus(UserStatus status);
+		void receive();
 
 	private:
 		Client();
@@ -31,6 +41,8 @@ class Client
 
 		int		_fd;
 		std::string	_hostname;
+		UserStatus _status;
+		std::string _buffer;
 	//des milliards de trucs à rajouter qu'on devra mettre dans le construct avec la struct sockaddr_in
 };
 
