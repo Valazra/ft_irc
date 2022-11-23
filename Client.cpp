@@ -31,6 +31,9 @@ void Client::splitCommand()
 		else
 			i++;
 	}
+	for (std::vector<std::string>::iterator it = _cmd.begin(); it != _cmd.end(); ++it)
+	std::cout << *it << "|" << std::endl;
+
 }
 
 void Client::receive()
@@ -64,6 +67,7 @@ void Client::receive()
 		_msg_finish = 1;
 	else
 		_msg_finish = 0;
+	std::cout << _msg << std::endl << std::endl << std::endl;
 
 	//pas fini
 }
