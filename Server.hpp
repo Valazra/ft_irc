@@ -41,6 +41,9 @@ class Server
 		std::vector<Client *> getClients();
 		std::string get(std::string key);
 		void sendPing();
+		void removeClient(int const &sock_to_remove);
+		void treat_complete_msg(int const &client_sock);
+		void registerClient(int const &client_sock);
 
 	private:
 		Server();

@@ -9,6 +9,7 @@
 # include <string.h>
 # include <errno.h>
 # include <fcntl.h>
+# include <vector>
 
 enum userStatus
 {
@@ -16,7 +17,7 @@ enum userStatus
 	PASSWORD,
 	REGISTER,
 	ONLINE,
-	DISCONNECT_ME
+	REMOVE_ME
 };
 
 class Client
@@ -34,8 +35,10 @@ class Client
 		Client(int sock, struct sockaddr_in address);
 		~Client();
 		userStatus getStatus();
-		void setStatus(UserStatus status);
+		void setStatus(userStatus status);
 		void receive();
+		bool getMsgFinish();
+		void splitCommand();
 
 	private:
 		Client();
@@ -44,10 +47,10 @@ class Client
 
 		int		_sock;
 		std::string	_hostname;
-		UserStatus _status;
 		std::string _msg;
-		vector<std::string> _cmd;
+		std::vector<std::string> _cmd;
 		bool _msg_finish;
+		userStatus _status;
 	//des milliards de trucs à rajouter qu'on devra mettre dans le construct avec la struct sockaddr_in
 };
 

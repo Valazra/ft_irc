@@ -96,14 +96,6 @@ void Server::run()
 {
 	//RAPPEL NOTRE _fds[0] C EST NOTRE LISTENED_SOCK
 
-	//valen si jamais t avais pas capte des qu'ils sortent des valeurs de leur
-	//cul avec get mes couilles c'est des trucs qu'ils definissent dans un fichier
-	//dans un dossier configs a la racine de leur repo voila moi j avais pas capte
-	//et ca m a casse le cul mdr
-	//moi je remplace tout leur truc par des gros define dans server.hpp
-	//j ai vu que t avais deja trouve une valeur max dans netdb, t'as lu un truc
-	//qui fallait utilise celle la?
-
 	// ces zinzins remplissent leur vector de client avec getclient qui
 	// trouve ces clients dans un map 
 	std::vector<Client *> clients = getClients();
@@ -139,16 +131,18 @@ void Server::run()
 			check_new_client();
 		else
 			for (std::vector<pollfd>::iterator it = _fds.begin(); it != _fds.end(); ++it)
+			{
 				if ((*it).revents == POLLIN)
 				{
-					_clients[(*it).sock]->receive();
-					if (_clients[(*it).sock]->getStatus == DISCONNECT_ME)
-						removeClient((*it).sock);
-					else if (_clients[(*it).sock]->getStatus == COMPLETE)
+					_clients[(*it).fd]->receive();
+					if (_clients[(*it).fd]->getStatus() == REMOVE_ME)
+						removeClient((*it).fd);
+					else if (_clients[(*it).fd]->getMsgFinish()) //le _msg_finish change dans client.receive()
 					{
-						treat_complete_msg((*it).sock);
+						treat_complete_msg((*it).fd);
 					}
 				}
+			}
 	}
 }
 
@@ -180,10 +174,26 @@ void Server::check_new_client()
 	_fds.back().events = POLLIN;
 }
 
-void	Server::registerClient(int const & client_sock)
+void	Server::treat_complete_msg(int const &client_sock)
 {
-	//ici
-	std::vector<std::string> full_command(client->getCommand());
+	// on regarde si on a plusieurs command dans notre _msg, on les split
+	// dans un vector de string du coup mtn on utilise _cmd
+	_clients[client_sock]->splitCommand();
+	if (_clients[client_sock]->getStatus() == TO_REGISTER)
+		registerClient(client_sock);
+//	else
+//		_command_book.find_command(client->getCommand().front(), client, _all_clients, &_all_channels);
+//	_client[client_sock]->clearMessage();
+//	_clients[client_sock]->clearCommand();
+//	_clients[client_sock]->clearCommand();
+//	this->find_to_kill();
+
+}
+
+void	Server::registerClient(int const &client_sock)
+{
+(void)client_sock;
+/*	std::vector<std::string> full_command(_client[client_sock]->getCommand());
 	std::vector<std::string> tmp = full_command;
 	while (full_command.empty() == false)
 	{
@@ -208,29 +218,14 @@ void	Server::registerClient(int const & client_sock)
 				client->setRegPass(false);
 			}
 		}
-	}
+	}*/
 }
 
-void	Server::treat_complete_msg(int const & client_sock)
-{
-	// on regarde si on a plusieurs command dans notre _msg, on les split
-	// dans un vector de string du coup mtn on utilise _cmd
-	client->splitCommand();
-	if (client->getStatus == TO_REGISTER)
-		registerClient(client_sock);
-	else
-		_command_book.find_command(client->getCommand().front(), client, _all_clients, &_all_channels);
-	client->clearMessage();
-	client->clearCommand();
-	client->clearCommand();
-	this->find_to_kill();
-
-}
-
-void	Server::removeClient(int const & sock_to_remove)
+void	Server::removeClient(int const &sock_to_remove)
 {
 	close(sock_to_remove);
-	_clients[sock_to_remove].erase();
+//faut iterer sur le map ou vector client pour erase je pense
+//	_clients[sock_to_remove].erase();
 }
 
 //à faire

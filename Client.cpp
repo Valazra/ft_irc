@@ -37,7 +37,7 @@ void Client::receive()
 {
 
 	char buffer[MAX_CHAR + 1]; //à verif si on met ça ou pas
-	memset(buf, 0, MAX_CHAR);
+	memset(buffer, 0, MAX_CHAR);
 	if (_msg_finish)
 	{
 		_msg.clear();
@@ -53,7 +53,7 @@ void Client::receive()
 	if (size == 0)
 	{
 		_msg.clear();
-		_status = DISCONNECT_ME;
+		_status = REMOVE_ME;
 		return;
 	}
 	buffer[size] = 0;
@@ -80,7 +80,12 @@ userStatus Client::getStatus()
 	return (_status);
 }
 
-void Client::setStatus(UserStatus status)
+bool Client::getMsgFinish()
+{
+	return (_msg_finish);
+}
+
+void Client::setStatus(userStatus status)
 {
 	_status = status;	
 }
