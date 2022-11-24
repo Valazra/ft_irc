@@ -2,7 +2,7 @@
 #include "Server.hpp"
 
 Client::Client(int sock, struct sockaddr_in address):
-_sock(sock), _hostname(), _msg_finish(0), _status(TO_REGISTER)
+_sock(sock), _hostname(), _msg_finish(0), _status(TO_REGISTER), _nickname()
 {
 	fcntl(sock, F_SETFL, O_NONBLOCK);
 	char hostname[NI_MAXHOST];
@@ -107,6 +107,11 @@ userStatus Client::getStatus()
 	return (_status);
 }
 
+void Client::setStatus(userStatus status)
+{
+	_status = status;	
+}
+
 std::vector<std::vector<std::string> > Client::getCmd()
 {
 	return (_cmd);
@@ -117,7 +122,12 @@ bool Client::getMsgFinish()
 	return (_msg_finish);
 }
 
-void Client::setStatus(userStatus status)
+std::string Client::getNickname()
 {
-	_status = status;	
+	return (_nickname);
+}
+
+void Client::setNickname(std::string nickname)
+{
+	_nickname = nickname;
 }

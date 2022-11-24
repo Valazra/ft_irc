@@ -179,8 +179,10 @@ void	Server::treat_complete_msg(int const &client_sock)
 	// on regarde si on a plusieurs command dans notre _msg, on les split
 	// dans un vector de string du coup mtn on utilise _cmd
 	_clients[client_sock]->splitCommand();
-	if (_clients[client_sock]->getStatus() == TO_REGISTER)
-		registerClient(client_sock);
+	Command com(_clients[client_sock]);
+	com.whoAmI();
+//	if (_clients[client_sock]->getStatus() == TO_REGISTER)
+//		registerClient(client_sock);
 //	else
 //		_command_book.find_command(client->getCommand().front(), client, _all_clients, &_all_channels);
 //	_client[client_sock]->clearMessage();
@@ -190,11 +192,12 @@ void	Server::treat_complete_msg(int const &client_sock)
 
 }
 
-void	Server::registerClient(int const &client_sock)
+/*void	Server::registerClient(int const &client_sock)
 {
-	Command com(_clients[client_sock]);	
+	(void)client_sock;
+	std::cout << "register client test" << std::endl;
 }
-
+*/
 /*	std::vector<std::string> full_command(_client[client_sock]->getCommand());
 	std::vector<std::string> tmp = full_command;
 	while (full_command.empty() == false)
