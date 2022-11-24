@@ -39,8 +39,8 @@ class Client
 		void receive();
 		std::vector<std::vector<std::string> > getCmd();
 		
-		bool getMsgFinish();
 		void splitCommand();
+		bool getMsgFinish();
 		std::string getNickname();
 		void setNickname(std::string nickname);
 
@@ -51,12 +51,11 @@ class Client
 
 		int		_sock;
 		std::string	_hostname;
-		std::string	_msg;
-		std::vector<std::vector<std::string> > _cmd;
-		std::vector<std::string> _cmd_split;
 		bool		_msg_finish;
 		userStatus	_status;
 		std::string	_nickname;
+		std::string	_msg;
+		std::vector<std::vector<std::string> > _cmd;
 	//des milliards de trucs à rajouter qu'on devra mettre dans le construct avec la struct sockaddr_in
 };
 

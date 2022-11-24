@@ -1,28 +1,39 @@
 #ifndef COMMAND_HPP
 # define COMMAND_HPP
 
-# include "Server.hpp"
-
-# define CMD_ARGS std::vector<std::string> cmd
-
+#include "Client.hpp"
+#include <map>
+#include <string>
+#include <ostream>
+#include <iostream>
+#include <vector>
 class Command
 {
 	public:
-		Command(Client *client);
+		Command(std::map<int, Client *> *client_map);
 		~Command();
-		void whoAmI();
+		void readCmd(int client_socket);
 		void registerAttempt();
-		void cap(CMD_ARGS);
-		void nick(CMD_ARGS);
-		void user(CMD_ARGS);
+		void splitCommand(std::string msg);
+
+		void cap();
+		void nick();
+		void user();
+
 
 	private:
 		Command();
 		Command(Command const &src);
 		Command &operator=(Command const & src);
 
-		std::map<std::string, void(Command::*)(CMD_ARGS)> _cmd_availables;
+		std::map<int, Client *> *_clients_ptr;
 		Client *_client;
+		std::vector<std::vector<std::string> > _cmd;
+		int _client_socket;
+		userStatus _client_status;
+		int	_actual_cmd;
+
+		std::map<std::string, void(Command::*)()> _cmd_availables;
 };
 
 #endif

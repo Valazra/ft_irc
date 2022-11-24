@@ -51,6 +51,7 @@ class Server
 		Server(Server const &src);
 		Server &operator=(Server const &src);
 
+		Command _cmd;
 		std::string	_port;
 		std::string	_pass;
 		std::map<std::string, std::string> _values;

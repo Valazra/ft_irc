@@ -16,6 +16,42 @@ _sock(sock), _hostname(), _msg_finish(0), _status(TO_REGISTER), _nickname()
 		this->_hostname = hostname;
 }
 
+void Client::receive()
+{
+	char buffer[MAX_CHAR + 1]; //à verif si on met ça ou pas
+	memset(buffer, 0, MAX_CHAR);
+	if (_msg_finish)
+	{
+		_msg.clear();
+		_msg_finish = 0;
+	}
+	//exception error plutot que return?
+	ssize_t size;
+	if ((size = recv(_sock, &buffer, MAX_CHAR, 0)) == -1)
+	{
+		_msg.clear();
+		return;
+	}
+	if (size == 0)
+	{
+		_msg.clear();
+		_status = REMOVE_ME;
+		return;
+	}
+	buffer[size] = 0;
+
+	_msg += buffer;
+	//check if msg if end with \r follow by \n
+	if (_msg.size() > 2 && *(_msg.end() - 2) ==  '\r' && *(_msg.end() - 1) == '\n')
+	{
+		_msg_finish = 1;
+		splitCommand();
+	}
+	else
+		_msg_finish = 0;
+	std::cout << _msg << std::endl << std::endl << std::endl;
+}
+
 void Client::splitCommand()
 {
 	int i = 0;
@@ -56,45 +92,7 @@ void Client::splitCommand()
 		for (std::vector<std::string>::iterator it2 = it->begin(); it2 != it->end(); ++it2)
 			std::cout << "|" << *it2 << "|" << std::endl;
 	}
-
 }
-
-void Client::receive()
-{
-
-	char buffer[MAX_CHAR + 1]; //à verif si on met ça ou pas
-	memset(buffer, 0, MAX_CHAR);
-	if (_msg_finish)
-	{
-		_msg.clear();
-		_msg_finish = 0;
-	}
-	//exception error plutot que return?
-	ssize_t size;
-	if ((size = recv(_sock, &buffer, MAX_CHAR, 0)) == -1)
-	{
-		_msg.clear();
-		return;
-	}
-	if (size == 0)
-	{
-		_msg.clear();
-		_status = REMOVE_ME;
-		return;
-	}
-	buffer[size] = 0;
-
-	_msg += buffer;
-	//check if msg if end with \r follow by \n
-	if (_msg.size() > 2 && *(_msg.end() - 2) ==  '\r' && *(_msg.end() - 1) == '\n')
-		_msg_finish = 1;
-	else
-		_msg_finish = 0;
-	std::cout << _msg << std::endl << std::endl << std::endl;
-
-	//pas fini
-}
-
 
 Client::~Client()
 {

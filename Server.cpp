@@ -1,6 +1,7 @@
 #include "Server.hpp"
 
-Server::Server(std::string port, std::string password): _port(port), _pass(password)
+Server::Server(std::string port, std::string password): 
+_cmd(&_clients), _port(port), _pass(password)
 {
 
 	int listened_sock;
@@ -165,9 +166,11 @@ void Server::check_new_client()
 		throw Server::ErrnoEx();
 	// et donc la ils creent le nouveau client qu'ils rajoutent a la map de clients
 	_clients[new_client_sock] =   new Client(new_client_sock, addr);
+	/*
 	// Si y'a pas de mdp on enregistre le client 
 	if (!(_pass.length())) 
 		_clients[new_client_sock]->setStatus(REGISTER);
+	*/
 	//on l'ajoute a notre vector de struct pollfd en ecoute
 	_fds.push_back(pollfd());
 	_fds.back().fd = new_client_sock;
@@ -176,11 +179,7 @@ void Server::check_new_client()
 
 void	Server::treat_complete_msg(int const &client_sock)
 {
-	// on regarde si on a plusieurs command dans notre _msg, on les split
-	// dans un vector de string du coup mtn on utilise _cmd
-	_clients[client_sock]->splitCommand();
-	Command com(_clients[client_sock]);
-	com.whoAmI();
+	_cmd.readCmd(client_sock);
 //	if (_clients[client_sock]->getStatus() == TO_REGISTER)
 //		registerClient(client_sock);
 //	else

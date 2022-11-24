@@ -1,7 +1,7 @@
 #include "Command.hpp"
 
-Command::Command(Client *client): 
-_client(client)
+Command::Command(std::map<int, Client *> *client_map):
+_clients_ptr(client_map)
 {
 	_cmd_availables["CAP"] = &Command::cap;
 	_cmd_availables["NICK"] = &Command::nick;
@@ -12,8 +12,16 @@ Command::~Command()
 {
 }
 
+
+
 void	Command::registerAttempt()
 {
+//	if (_cmd_availables[_cmd[_actual_cmd][0]])
+
+
+	std::cout << _cmd[_actual_cmd][0] << std::endl;
+	(this->*_cmd_availables[_cmd[_actual_cmd][0]])();
+
 	/*
 	if (key.compare("CAP") != 0 && key.compare("PASS") != 0 && key.compare("USER") != 0 && key.compare("NICK") != 0)
 		{
@@ -28,8 +36,14 @@ void	Command::registerAttempt()
 	*/
 }
 
-void Command::whoAmI()
+void Command::readCmd(int client_socket)
 {
+	_client_socket = client_socket;
+	_client = (*_clients_ptr)[client_socket];
+	_cmd = _client->getCmd();
+	_actual_cmd = 0;
+	_client_status = _client->getStatus();
+		std::cout << _client_status << std::endl;
 	if (_client->getStatus() == TO_REGISTER)
 	{
 		std::cout << "ola ola ola" << std::endl;
@@ -37,9 +51,9 @@ void Command::whoAmI()
 	}
 }
 
-void	Command::cap(CMD_ARGS)
+void	Command::cap()
 {
-	(void)cmd;
+	std::cout << "ON NE FAIT RIEN POUR CAP, ON IGNORE ET ON CONTINUE" << std::endl;
 }
 
 int parsingNickname(std::string nickname)
@@ -68,9 +82,8 @@ int checkNickname(std::string nickname)
 
 }
 
-void	Command::nick(CMD_ARGS)
+void	Command::nick()
 {
-	(void)cmd;
 /*	if (!cmd[1])
 		ERR_NONICKNAMEGIVEN(); //return 431
 	else if (!parsingNickname(cmd[1]))
@@ -84,7 +97,6 @@ void	Command::nick(CMD_ARGS)
 	}
 */
 }
-void	Command::user(CMD_ARGS)
+void	Command::user()
 {
-	(void)cmd;
 }
