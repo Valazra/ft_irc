@@ -7,19 +7,20 @@
 #include <ostream>
 #include <iostream>
 #include <vector>
+
 class Command
 {
 	public:
-		Command(std::map<int, Client *> *client_map);
+		Command(std::map<int, Client *> *client_map, std::string password);
 		~Command();
 		void readCmd(int client_socket);
 		void registerAttempt();
 		void splitCommand(std::string msg);
 
 		void cap();
+		void pass();
 		void nick();
 		void user();
-
 
 	private:
 		Command();
@@ -32,8 +33,8 @@ class Command
 		int _client_socket;
 		userStatus _client_status;
 		int	_actual_cmd;
-
 		std::map<std::string, void(Command::*)()> _cmd_availables;
+		std::string _password;
 };
 
 #endif

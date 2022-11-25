@@ -1,7 +1,7 @@
 #include "Server.hpp"
 
 Server::Server(std::string port, std::string password): 
-_cmd(&_clients), _port(port), _pass(password)
+_port(port), _pass(password), _cmd(&_clients, password)
 {
 
 	int listened_sock;
@@ -84,9 +84,6 @@ _cmd(&_clients), _port(port), _pass(password)
 	_fds.push_back(pollfd());
 	_fds.back().fd = listened_sock;
 	_fds.back().events = POLLIN;
-
-	this->set("user_mode", "aiwro");
-//des set à rajouter
 }
 
 Server::~Server()
@@ -99,7 +96,7 @@ void Server::run()
 
 	// ces zinzins remplissent leur vector de client avec getclient qui
 	// trouve ces clients dans un map 
-	std::vector<Client *> clients = getClients();
+//	std::vector<Client *> clients = getClients();
 
 	 // int poll(struct pollfd fds[], nfds_t nfds, int timeout);
 	 //fds is our array of information (which sockets to monitor for what),
@@ -234,23 +231,4 @@ void	Server::removeClient(int const &sock_to_remove)
 //à faire
 void Server::sendPing()
 {
-}
-
-//recupere la liste des clients dans un vector
-std::vector<Client *> Server::getClients()
-{
-	std::vector<Client *> clients = std::vector<Client *>();
-	for (std::map<int, Client *>::iterator it = this->_clients.begin(); it != this->_clients.end(); ++it)
-		clients.push_back(it->second);
-	return (clients);
-}
-
-void Server::set(std::string key, std::string value)
-{
-	_values[key] = value;
-}
-
-std::string Server::get(std::string key)
-{
-	return (_values[key]);
 }

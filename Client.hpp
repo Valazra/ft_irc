@@ -42,7 +42,9 @@ class Client
 		void splitCommand();
 		bool getMsgFinish();
 		std::string getNickname();
+		std::string getUsername();
 		void setNickname(std::string nickname);
+		void setUsername(std::string username);
 
 	private:
 		Client();
@@ -54,6 +56,7 @@ class Client
 		bool		_msg_finish;
 		userStatus	_status;
 		std::string	_nickname;
+		std::string	_username;
 		std::string	_msg;
 		std::vector<std::vector<std::string> > _cmd;
 	//des milliards de trucs à rajouter qu'on devra mettre dans le construct avec la struct sockaddr_in

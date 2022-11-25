@@ -37,10 +37,7 @@ class Server
 		virtual ~Server();
 
 		void run();
-		void set(std::string key, std::string value);
 		void check_new_client();
-		std::vector<Client *> getClients();
-		std::string get(std::string key);
 		void sendPing();
 		void removeClient(int const &sock_to_remove);
 		void treat_complete_msg(int const &client_sock);
@@ -51,10 +48,9 @@ class Server
 		Server(Server const &src);
 		Server &operator=(Server const &src);
 
-		Command _cmd;
 		std::string	_port;
 		std::string	_pass;
-		std::map<std::string, std::string> _values;
+		Command _cmd;
 		std::vector<pollfd> _fds;
 		std::map<int, Client *> _clients;
 		time_t last_ping;
