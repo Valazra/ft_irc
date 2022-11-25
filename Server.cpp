@@ -225,7 +225,7 @@ void	Server::removeClient(int const &sock_to_remove)
 {
 	close(sock_to_remove);
 //faut iterer sur le map ou vector client pour erase je pense
-//	_clients[sock_to_remove].erase();
+	_clients.erase(sock_to_remove);
 }
 
 //à faire

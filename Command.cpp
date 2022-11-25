@@ -1,7 +1,8 @@
 #include "Command.hpp"
 
 Command::Command(std::map<int, Client *> *client_map, std::string password):
-	_clients_ptr(client_map), _password(password)
+_clients_ptr(client_map), _password(password), _server_name("localhost"),
+_fatal_error(0)
 {
 	_cmd_availables["CAP"] = &Command::cap;
 	_cmd_availables["PASS"] = &Command::pass;
@@ -18,16 +19,23 @@ Command::~Command()
 void	Command::registerAttempt()
 {
 //il nous faut le  nombre de commandes pour parcourir exactement le bon nombre
-	while (_actual_cmd < 4)
+//
+	for (std::vector<std::vector<std::string> >::iterator it = _cmd.begin(); it != _cmd.end(); ++it)
 	{
-		std::cout << _cmd[_actual_cmd][0] << std::endl;
-		(this->*_cmd_availables[_cmd[_actual_cmd][0]])();
+		if ((it->empty()))
+			return ;
+		std::cout << it->front() << std::endl;
+		(this->*_cmd_availables[it->front()])();
+		if (_fatal_error)
+			return ;
 		_actual_cmd++;
+	
 	}
 }
 
 void Command::readCmd(int client_socket)
 {
+	_fatal_error = 0;
 	_client_socket = client_socket;
 	_client = (*_clients_ptr)[client_socket];
 	_cmd = _client->getCmd();
@@ -50,8 +58,25 @@ void	Command::pass()
 	if (_cmd[_actual_cmd][1] == _password)
 		std::cout << "bon password bravo" << std::endl;
 	else
+	{
+		sendToClient(464); //ERR_PASSWDMISMATCH
+		fatalError("You SHOULD try to connect with the good password.");
+		return ;
+	}
+		
 		std::cout << "mauvais pass" << std::endl;
 		//mettre un truc qui stoppe tout
+		//
+		/*
+	if (client->isRegistered() == true)
+		return ft_error(ERR_ALREADYREGISTERED, client, NULL, "");
+	if (params.size() < 2)
+		return (ft_error(ERR_NEEDMOREPARAMS, client, NULL, params[0]));
+	if (client->getRegUser() == true || client->getRegNick() == true)
+		return;
+	client->setPassword(params[1]);
+	client->setRegPass(true);
+	*/
 }
 
 int parsingNickname(std::string nickname)
@@ -128,4 +153,45 @@ void	Command::user()
 		_client->setUsername(_cmd[_actual_cmd][1]);
 		std::cout << "_client->getUsername() = " << _client->getUsername() << std::endl;
 	}
+}
+
+void Command::sendToClient(int numeric_replies)
+{
+	std::string msg;
+
+//	if (numeric_replies <= 5)
+//	{
+		// :server_name c'est le prefix
+		// ensuite la command qui dans notre cas est represente par son numero de reponse
+		// et finalement les params
+		msg == ":" + _server_name + " " + to_string(numeric_replies) + " " + _client->getNickname() + " :";
+//	}
+	switch (numeric_replies)
+	{
+		case 1: //RPL_WELCOME
+		{			
+			msg += "Welcome to the Internet Relay Network " + _client->getNickname() + "\r\n";
+			break;
+		}
+		case 464: //ERR_PASSWDMISMATCH
+		{
+			msg += "Password incorrect\r\n";	
+			break;
+		}
+	}
+	send(_client_socket, msg.c_str(), msg.size(), 0);
+}
+
+
+void Command::fatalError(std::string msg_error)
+{
+	std::string msg;
+	msg = ":" + _client->getNickname() + " " + "ERROR" + " :" +msg_error + "\r\n";
+	std::cout << msg << std::endl;
+
+	send(_client_socket, msg.c_str(), msg.size(), 0);
+	_fatal_error = 1;
+	close(_client_socket);
+	(*_clients_ptr).erase(_client_socket);
+	std::cout << "fatalError" << std::endl;
 }

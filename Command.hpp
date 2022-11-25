@@ -2,6 +2,7 @@
 # define COMMAND_HPP
 
 #include "Client.hpp"
+#include "to_string.hpp"
 #include <map>
 #include <string>
 #include <ostream>
@@ -16,6 +17,8 @@ class Command
 		void readCmd(int client_socket);
 		void registerAttempt();
 		void splitCommand(std::string msg);
+		void sendToClient(int numeric_replies);
+		void fatalError(std::string msg_error);
 
 		void cap();
 		void pass();
@@ -35,6 +38,8 @@ class Command
 		int	_actual_cmd;
 		std::map<std::string, void(Command::*)()> _cmd_availables;
 		std::string _password;
+		std::string _server_name;
+		int _fatal_error;
 };
 
 #endif
