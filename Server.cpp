@@ -156,7 +156,6 @@ void Server::check_new_client()
 		if (shutdown(_fds[0].fd, SHUT_RD) == -1)
 			throw Server::ErrnoEx();
 	struct sockaddr_in addr;
-	// j ai pas compris la ligne d apres
 	socklen_t sock_len = sizeof(addr);
 	int new_client_sock = accept(_fds[0].fd, (struct sockaddr *)&addr, &sock_len);
 	if (new_client_sock == -1)
@@ -187,39 +186,6 @@ void	Server::treat_complete_msg(int const &client_sock)
 //	this->find_to_kill();
 
 }
-
-/*void	Server::registerClient(int const &client_sock)
-{
-	(void)client_sock;
-	std::cout << "register client test" << std::endl;
-}
-*/
-/*	std::vector<std::string> full_command(_client[client_sock]->getCommand());
-	std::vector<std::string> tmp = full_command;
-	while (full_command.empty() == false)
-	{
-
-		_command_book.find_command(full_command.front(), client, _all_clients, &_all_channels);
-		full_command.erase(full_command.begin());
-	}
-	if (client->getRegNick() == true && client->getRegUser() == true)
-	{
-		std::cout << GREEN << "********REGISTRATION SUCCESS for " << client->getNickname() << "**********" << RESET << std::endl;
-		client->setRegistration(true);
-		ft_reply("001", client, NULL, "");
-		ft_reply("002", client, NULL, "");
-		ft_reply("003", client, NULL, "");
-		ft_reply("004", client, NULL, "");
-		ft_reply(RPL_CUSTOMMOTD, client, NULL, _pokemon);
-		if (client->getRegPass() == true)
-		{
-			if (client->getPassword() != this->_password)
-			{
-				ft_error(ERR_PASSWDMISMATCH, client, NULL, "");
-				client->setRegPass(false);
-			}
-		}
-	}*/
 
 void	Server::removeClient(int const &sock_to_remove)
 {

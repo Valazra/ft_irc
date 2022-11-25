@@ -1,8 +1,8 @@
 #include "Command.hpp"
 
 Command::Command(std::map<int, Client *> *client_map, std::string password):
-_clients_ptr(client_map), _password(password), _server_name("localhost"),
-_fatal_error(0)
+	_clients_ptr(client_map), _password(password), _server_name("localhost"),
+	_fatal_error(0)
 {
 	_cmd_availables["CAP"] = &Command::cap;
 	_cmd_availables["PASS"] = &Command::pass;
@@ -18,8 +18,6 @@ Command::~Command()
 
 void	Command::registerAttempt()
 {
-//il nous faut le  nombre de commandes pour parcourir exactement le bon nombre
-//
 	for (std::vector<std::vector<std::string> >::iterator it = _cmd.begin(); it != _cmd.end(); ++it)
 	{
 		if ((it->empty()))
@@ -29,7 +27,7 @@ void	Command::registerAttempt()
 		if (_fatal_error)
 			return ;
 		_actual_cmd++;
-	
+
 	}
 }
 
@@ -63,23 +61,21 @@ void	Command::pass()
 		fatalError("You SHOULD try to connect with the good password.");
 		return ;
 	}
-		
-		std::cout << "mauvais pass" << std::endl;
-		//mettre un truc qui stoppe tout
-		//
-		/*
-	if (client->isRegistered() == true)
-		return ft_error(ERR_ALREADYREGISTERED, client, NULL, "");
-	if (params.size() < 2)
-		return (ft_error(ERR_NEEDMOREPARAMS, client, NULL, params[0]));
-	if (client->getRegUser() == true || client->getRegNick() == true)
-		return;
-	client->setPassword(params[1]);
-	client->setRegPass(true);
-	*/
+
+	//
+	/*
+	   if (client->isRegistered() == true)
+	   return ft_error(ERR_ALREADYREGISTERED, client, NULL, "");
+	   if (params.size() < 2)
+	   return (ft_error(ERR_NEEDMOREPARAMS, client, NULL, params[0]));
+	   if (client->getRegUser() == true || client->getRegNick() == true)
+	   return;
+	   client->setPassword(params[1]);
+	   client->setRegPass(true);
+	 */
 }
 
-int parsingNickname(std::string nickname)
+int Command::parsingNickname(std::string nickname)
 {
 	std::string special("[]{}|^_\\"); //pris sur Adrien mais à vérif
 	for (std::string::iterator it = nickname.begin() ; it != nickname.end() ; it++)
@@ -90,39 +86,35 @@ int parsingNickname(std::string nickname)
 	return (1);
 }
 
-int checkNickname(std::string nickname)
+int Command::checkNickname(std::string nickname)
 {
-	(void)nickname;
-	//probleme car on doit parcourir TOUS les clients pour voir si le nom est pas déjà pris
-	//donc faut faire iterer sur tous les clients etc mais ici on y a pas acces
-	/*	std::vector<Client *>::iterator it = clients.begin();
-		while (it != clients.end())
-		{
-		if ((*it)->getNickname() == nickname)
-		return (0);
-		}
-	 */	return (1);
+	for (std::map<int, Client *>::iterator it = (*_clients_ptr).begin() ; it != (*_clients_ptr).end() ; ++it)
+	{
+		if ((*it).second->getNickname() == nickname)
+			return (0);
+	}
+	return (1);
 
 }
 
 void	Command::nick()
 {
-	std::cout << "on est dans nick" << std::endl;
-//a voir si on laisse size < 2 car j'ai trouvé ça sur adri mais je trouve pas un doc officiel qui explique ça
+	std::cout << "On est dans nick" << std::endl;
+	//a voir si on laisse size < 2 car j'ai trouvé ça sur adri mais je trouve pas un doc officiel qui explique ça
 	if (_cmd[_actual_cmd][1].size() < 2)
 	{
-		std::cout << "err_nonicknamegiven" << std::endl;
-		return ;//	ERR_NONICKNAMEGIVEN(); //return 431
+		sendToClient(431); //ERR_NONICKNAMEGIVEN
+		return ;
 	}
 	else if (!parsingNickname(_cmd[_actual_cmd][1]))
 	{
-		std::cout << "err_erroneusnickname" << std::endl;
-		return ;//ERR_ERRONEUSNICKNAME(); //return 432
+		sendToClient(432); //ERR_ERRONEUSNICKNAME
+		return ;
 	}
 	else if (!checkNickname(_cmd[_actual_cmd][1]))
 	{
-		std::cout << "err_nicknameinuse" << std::endl;
-		return ;//ERR_NICKNAMEINUSE(); //return 433
+		sendToClient(433); //ERR_NICKNAMEINUSE
+		return ;
 	}
 	else
 	{
@@ -139,15 +131,16 @@ void	Command::user()
 	//si le status est encore TO_REGISTER alors on va dans le if
 	if (_client->getStatus() != 0)
 	{
+		sendToClient(462); //ERR_ALREADYREGISTERED
 		std::cout << "err_alreadyregistered" << std::endl;
-		return ; // ERR_ALREADYREGISTERED(); //return 462
+		return ;
 	}
-/*	else if (!(_cmd[_actual_cmd][1])) //trouver un meilleur moyen
-	{
-		std::cout << "err_needmoreparams" << std::endl;
-		return ; //ERR_NEEDMOREPARAMS; // RETURN 461
-	}
-*/	else
+	/*	else if (!(_cmd[_actual_cmd][1])) //trouver un meilleur moyen
+		{
+			sendToClient(461); //ERR_NEEDMOREPARAMS
+			return ;
+		}
+	 */	else
 	{ 
 		std::cout << "_client->getUsername() = " << _client->getUsername() << std::endl;
 		_client->setUsername(_cmd[_actual_cmd][1]);
@@ -159,25 +152,55 @@ void Command::sendToClient(int numeric_replies)
 {
 	std::string msg;
 
-//	if (numeric_replies <= 5)
-//	{
-		// :server_name c'est le prefix
-		// ensuite la command qui dans notre cas est represente par son numero de reponse
-		// et finalement les params
-		msg == ":" + _server_name + " " + to_string(numeric_replies) + " " + _client->getNickname() + " :";
-//	}
+	//	if (numeric_replies <= 5)
+	//	{
+	// :server_name c'est le prefix
+	// ensuite la command qui dans notre cas est represente par son numero de reponse
+	// et finalement les params
+	msg == ":" + _server_name + " " + to_string(numeric_replies) + " " + _client->getUsername();
+	//	}
 	switch (numeric_replies)
 	{
 		case 1: //RPL_WELCOME
-		{			
-			msg += "Welcome to the Internet Relay Network " + _client->getNickname() + "\r\n";
-			break;
-		}
+			{			
+				msg += ":Welcome to the Internet Relay Network " + _client->getNickname() + "\r\n";
+				break;
+			}
+		case 431: //ERR_NONICKNAMEGIVEN
+			{
+				msg += ":No nickname given\r\n";	
+				break;
+			}
+		case 432: //ERR_ERRONEUSNICKNAME
+			{
+				msg += _client->getNickname() + ":Erroneus nickname\r\n";	
+				break;
+			}
+		case 433: //ERR_NICKNAMEINUSE
+			{
+				msg += _client->getNickname() + ":Nickname is already in use\r\n";	
+				break;
+			}
+		case 436: //ERR_NICKCOLLISION
+			{
+				msg += _client->getNickname() + ":Nickname collision KILL from <" + _client->getUsername() + ">@<" + _client->getHostname() + ">\r\n";	
+				break;
+			}
+		case 461: //ERR_NEEDMOREPARAMS
+			{
+				msg += _cmd[_actual_cmd][0] + ":Not enough parameters\r\n";
+				break;
+			}
+		case 462: //ERR_ALREADYREGISTERED
+			{
+				msg += ":You may not reregister\r\n";	
+				break;
+			}
 		case 464: //ERR_PASSWDMISMATCH
-		{
-			msg += "Password incorrect\r\n";	
-			break;
-		}
+			{
+				msg += ":Password incorrect\r\n";	
+				break;
+			}
 	}
 	send(_client_socket, msg.c_str(), msg.size(), 0);
 }

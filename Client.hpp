@@ -41,6 +41,7 @@ class Client
 		
 		void splitCommand();
 		bool getMsgFinish();
+		std::string getHostname();
 		std::string getNickname();
 		std::string getUsername();
 		void setNickname(std::string nickname);
@@ -52,9 +53,9 @@ class Client
 		Client &operator=(Client const & src);
 
 		int		_sock;
-		std::string	_hostname;
 		bool		_msg_finish;
 		userStatus	_status;
+		std::string	_hostname;
 		std::string	_nickname;
 		std::string	_username;
 		std::string	_msg;

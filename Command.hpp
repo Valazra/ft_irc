@@ -19,6 +19,8 @@ class Command
 		void splitCommand(std::string msg);
 		void sendToClient(int numeric_replies);
 		void fatalError(std::string msg_error);
+		int parsingNickname(std::string nickname);
+		int checkNickname(std::string nickname);
 
 		void cap();
 		void pass();
