@@ -4,7 +4,7 @@ COMPILER = c++
 
 FLAGS = -Wall -Wextra -Werror -g -std=c++98
 
-SRCS = main.cpp Server.cpp Client.cpp Command.cpp
+SRCS = main.cpp Server.cpp Client.cpp Command.cpp Channel.cpp
 
 OBJ = $(SRCS:.cpp=.o)
 

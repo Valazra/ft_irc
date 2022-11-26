@@ -2,6 +2,7 @@
 # define CLIENT_HPP
 
 # define MAX_CHAR 4096
+# include "Channel.hpp"
 # include <iostream>
 # include <unistd.h>
 # include <sys/socket.h>
@@ -19,6 +20,8 @@ enum userStatus
 	REGISTER,
 	ONLINE
 };
+
+class Channel;
 
 class Client
 {
@@ -46,6 +49,7 @@ class Client
 		std::string getUsername();
 		void setNickname(std::string nickname);
 		void setUsername(std::string username);
+		void add_channel(Channel *channel);
 
 	private:
 		Client();
@@ -60,7 +64,7 @@ class Client
 		std::string	_username;
 		std::string	_msg;
 		std::vector<std::vector<std::string> > _cmd;
-	//des milliards de trucs à rajouter qu'on devra mettre dans le construct avec la struct sockaddr_in
+		std::vector<Channel *> _all_channels;
 };
 
 #endif

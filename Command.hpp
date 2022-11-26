@@ -26,6 +26,7 @@ class Command
 		void pass();
 		void nick();
 		void user();
+		void join();
 
 	private:
 		Command();

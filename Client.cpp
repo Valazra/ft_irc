@@ -2,7 +2,7 @@
 #include "Server.hpp"
 
 Client::Client(int sock, struct sockaddr_in address):
-_sock(sock), _msg_finish(0), _status(TO_REGISTER), _hostname(),_nickname(), _username()
+_sock(sock), _msg_finish(0), _status(TO_REGISTER), _hostname(),_nickname(), _username(), _all_channels()
 {
 	fcntl(sock, F_SETFL, O_NONBLOCK);
 	char hostname[NI_MAXHOST];
@@ -143,4 +143,14 @@ void Client::setNickname(std::string nickname)
 void Client::setUsername(std::string username)
 {
 	_username = username;
+}
+
+void Client::add_channel(Channel *channel)
+{
+	for (std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
+	{
+		if ((*it) == channel)
+			return ;
+	}
+	_all_channels.push_back(channel);
 }

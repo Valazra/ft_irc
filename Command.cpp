@@ -8,6 +8,7 @@ Command::Command(std::map<int, Client *> *client_map, std::string password):
 	_cmd_availables["PASS"] = &Command::pass;
 	_cmd_availables["NICK"] = &Command::nick;
 	_cmd_availables["USER"] = &Command::user;
+	_cmd_availables["JOIN"] = &Command::join;
 }
 
 Command::~Command()
@@ -41,6 +42,8 @@ void Command::readCmd(int client_socket)
 	_client_status = _client->getStatus();
 	if (_client->getStatus() == TO_REGISTER)
 		registerAttempt();
+	else
+		std::cout << "on est deja register" << std::endl;
 }
 
 void	Command::cap()
@@ -146,6 +149,20 @@ void	Command::user()
 		_client->setUsername(_cmd[_actual_cmd][1]);
 		std::cout << "_client->getUsername() = " << _client->getUsername() << std::endl;
 	}
+}
+
+void	Command::join()
+{
+	//a rajouter : tchecker si le chan existe déjà ou pas (peut etre rajouter la liste de tous les channels en attribut de cmd ??
+	//si le chan existe pas : on le crée
+	Channel new_chan(_cmd[_actual_cmd][1], _client);
+	//sinon on le rejoint juste
+		//et du coup parcourir les chans pour trouver le bon chan et rajouter le client dans la liste des clients du chan
+
+
+	//on ajoute le nouveau chan à la liste _all_chans de tous les clients
+	for (std::map<int, Client *>::iterator it = (*_clients_ptr).begin() ; it != (*_clients_ptr).end() ; ++it)
+		(*it).second->add_channel(&new_chan);
 }
 
 void Command::sendToClient(int numeric_replies)
