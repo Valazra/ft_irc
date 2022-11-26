@@ -28,8 +28,8 @@ void	Command::registerAttempt()
 		if (_fatal_error)
 			return ;
 		_actual_cmd++;
-
 	}
+	_client->setStatus(REGISTER);
 }
 
 void Command::readCmd(int client_socket)
