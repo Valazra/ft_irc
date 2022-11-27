@@ -80,7 +80,7 @@ void	Command::pass()
 
 int Command::parsingNickname(std::string nickname)
 {
-	std::string special("[]{}|^_\\"); //pris sur Adrien mais à vérif
+	std::string special(" *,?!@:[]{}|$.^_\\"); //pris sur Adrien mais à vérif
 	for (std::string::iterator it = nickname.begin() ; it != nickname.end() ; it++)
 	{
 		if (!isalpha(*it) && special.find(*it, 0) == std::string::npos && *it != '-' && !isdigit(*it))
@@ -103,10 +103,6 @@ int Command::checkNickname(std::string nickname)
 void	Command::nick()
 {
 	std::cout << "On est dans nick" << std::endl;
-	//a voir si on laisse size < 2 car j'ai trouvé ça sur adri mais je trouve pas un doc officiel qui explique ça
-	// tu confonds adrien regarde pas si [acutal_cmd][1] est plus pettit que 2
-	// il regarde si [actual_cmd] a au moins deux strings!!!! donc en gros si il y 'a bien un nickname derriere NICK
-	//nickname   =  ( letter / special ) *8( letter / digit / special / "-" )
 	/*
 	Nicknames are non-empty strings with the following restrictions:
 
@@ -115,12 +111,7 @@ void	Command::nick()
     They MUST NOT start with a character listed as a channel type prefix.
     They SHOULD NOT contain any dot character ('.', 0x2E).
 	*/
-	if (_cmd[_actual_cmd][1].size() < 2)
-	{
-		sendToClient(431); //ERR_NONICKNAMEGIVEN
-		return ;
-	}
-	else if (!parsingNickname(_cmd[_actual_cmd][1]))
+	if (!parsingNickname(_cmd[_actual_cmd][1]))
 	{
 		sendToClient(432); //ERR_ERRONEUSNICKNAME
 		return ;
@@ -128,6 +119,11 @@ void	Command::nick()
 	else if (!checkNickname(_cmd[_actual_cmd][1]))
 	{
 		sendToClient(433); //ERR_NICKNAMEINUSE
+		return ;
+	}
+	else if (_cmd[_actual_cmd][1].length() < 1)
+	{
+		sendToClient(431); //ERR_NONICKNAMEGIVEN
 		return ;
 	}
 	else
@@ -142,21 +138,19 @@ void	Command::nick()
 void	Command::user()
 {
 	std::cout << "slt on est dans user" << std::endl;
-	//si le status est encore TO_REGISTER alors on va dans le if
-	//nn c est l inverse que t as ecrit tu vas dans le if si il est pas
-	//sur TO_REGISTER
+	//si le status est pas sur TO_REGISTER alors on va dans le if
 	if (_client->getStatus() != 0)
 	{
 		sendToClient(462); //ERR_ALREADYREGISTERED
 		std::cout << "err_alreadyregistered" << std::endl;
 		return ;
 	}
-	/*	else if (!(_cmd[_actual_cmd][1])) //trouver un meilleur moyen
-		{
-			sendToClient(461); //ERR_NEEDMOREPARAMS
-			return ;
-		}
-	 */	else
+	else if ((_cmd[_actual_cmd][1]).length() < 1)
+	{
+		sendToClient(461); //ERR_NEEDMOREPARAMS
+		return ;
+	}
+	else
 	{ 
 		std::cout << "_client->getUsername() = " << _client->getUsername() << std::endl;
 		_client->setUsername(_cmd[_actual_cmd][1]);
