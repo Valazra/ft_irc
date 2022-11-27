@@ -22,6 +22,7 @@ enum userStatus
 };
 
 class Channel;
+class Command;
 
 class Client
 {
@@ -50,6 +51,10 @@ class Client
 		void setNickname(std::string nickname);
 		void setUsername(std::string username);
 		void add_channel(Channel *channel);
+		void leave_channel(Channel *channel);
+		Channel *getActualChannel();
+		void setActualChannel(Channel *channel);
+		std::vector<Channel *> getAllChannels();
 
 	private:
 		Client();
@@ -64,6 +69,8 @@ class Client
 		std::string	_username;
 		std::string	_msg;
 		std::vector<std::vector<std::string> > _cmd;
+//mettre en vector si un client peut avoir plusieurs chans en meme temps
+		Channel *_actual_channel;
 		std::vector<Channel *> _all_channels;
 };
 

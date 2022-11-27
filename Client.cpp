@@ -2,7 +2,7 @@
 #include "Server.hpp"
 
 Client::Client(int sock, struct sockaddr_in address):
-_sock(sock), _msg_finish(0), _status(TO_REGISTER), _hostname(),_nickname(), _username(), _all_channels()
+	_sock(sock), _msg_finish(0), _status(TO_REGISTER), _hostname(),_nickname(), _username(), _actual_channel(), _all_channels()
 {
 	fcntl(sock, F_SETFL, O_NONBLOCK);
 	char hostname[NI_MAXHOST];
@@ -153,4 +153,36 @@ void Client::add_channel(Channel *channel)
 			return ;
 	}
 	_all_channels.push_back(channel);
+	_actual_channel = channel;
+}
+
+void Client::leave_channel(Channel *channel)
+{
+	if (_actual_channel == channel)
+	{
+		for (std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
+		{
+			if ((*it) == channel)
+			{
+			//il faut suppr le chan de la liste de tous les chans
+				//(*it).erase();
+				_actual_channel = NULL;
+			}
+		}
+	}
+}
+
+Channel * Client::getActualChannel()
+{
+	return (_actual_channel);
+}
+
+void Client::setActualChannel(Channel *channel)
+{
+	this->_actual_channel = channel;
+}
+
+std::vector<Channel *> Client::getAllChannels()
+{
+	return (_all_channels);
 }

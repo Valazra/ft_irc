@@ -153,13 +153,19 @@ void	Command::user()
 
 void	Command::join()
 {
-	//a rajouter : tchecker si le chan existe déjà ou pas (peut etre rajouter la liste de tous les channels en attribut de cmd ??
+//on parcoure tous les chans
+	for (std::vector<Channel *>::iterator it = _client->getAllChannels().begin() ; it != _client->getAllChannels().end() ; ++it)
+	{
+		//si le chan existe déjà
+		if ((*it)->getName() == _cmd[_actual_cmd][1])
+		{
+			//on rejoint le chan et on quitte la commande
+			_client->setActualChannel(*it); 
+			return ;
+		}
+	}
 	//si le chan existe pas : on le crée
 	Channel new_chan(_cmd[_actual_cmd][1], _client);
-	//sinon on le rejoint juste
-		//et du coup parcourir les chans pour trouver le bon chan et rajouter le client dans la liste des clients du chan
-
-
 	//on ajoute le nouveau chan à la liste _all_chans de tous les clients
 	for (std::map<int, Client *>::iterator it = (*_clients_ptr).begin() ; it != (*_clients_ptr).end() ; ++it)
 		(*it).second->add_channel(&new_chan);
@@ -174,13 +180,23 @@ void Command::sendToClient(int numeric_replies)
 	// :server_name c'est le prefix
 	// ensuite la command qui dans notre cas est represente par son numero de reponse
 	// et finalement les params
-	msg == ":" + _server_name + " " + to_string(numeric_replies) + " " + _client->getUsername();
+	msg == ":" + _server_name + " " + to_string(numeric_replies) + " " + _client->getUsername() + " ";
 	//	}
 	switch (numeric_replies)
 	{
 		case 1: //RPL_WELCOME
 			{			
 				msg += ":Welcome to the Internet Relay Network " + _client->getNickname() + "\r\n";
+				break;
+			}
+		case 403: //ERR_NOSUCHCHANNEL
+			{
+				msg += _client->getActualChannel()->getName() + " :No such channel\r\n";	
+				break;
+			}
+		case 405: //ERR_TOOMANYCHANNELS
+			{
+				msg += _client->getActualChannel()->getName() + " :You have  joined too many channels\r\n";
 				break;
 			}
 		case 431: //ERR_NONICKNAMEGIVEN
@@ -190,22 +206,22 @@ void Command::sendToClient(int numeric_replies)
 			}
 		case 432: //ERR_ERRONEUSNICKNAME
 			{
-				msg += _client->getNickname() + ":Erroneus nickname\r\n";	
+				msg += _client->getNickname() + " :Erroneus nickname\r\n";	
 				break;
 			}
 		case 433: //ERR_NICKNAMEINUSE
 			{
-				msg += _client->getNickname() + ":Nickname is already in use\r\n";	
+				msg += _client->getNickname() + " :Nickname is already in use\r\n";	
 				break;
 			}
 		case 436: //ERR_NICKCOLLISION
 			{
-				msg += _client->getNickname() + ":Nickname collision KILL from <" + _client->getUsername() + ">@<" + _client->getHostname() + ">\r\n";	
+				msg += _client->getNickname() + " :Nickname collision KILL from " + _client->getUsername() + "@" + _client->getHostname() + "\r\n";	
 				break;
 			}
 		case 461: //ERR_NEEDMOREPARAMS
 			{
-				msg += _cmd[_actual_cmd][0] + ":Not enough parameters\r\n";
+				msg += _cmd[_actual_cmd][0] + " :Not enough parameters\r\n";
 				break;
 			}
 		case 462: //ERR_ALREADYREGISTERED
@@ -216,6 +232,32 @@ void Command::sendToClient(int numeric_replies)
 		case 464: //ERR_PASSWDMISMATCH
 			{
 				msg += ":Password incorrect\r\n";	
+				break;
+			}
+		case 471: //ERR_CHANNELISFULL
+			{
+				msg += _client->getActualChannel()->getName() + " :Cannot join channel (+1)\r\n";	
+				break;
+			}
+		case 473: //ERR_INVITEONLYCHAN
+			{
+				msg += _client->getActualChannel()->getName() + " :Cannot join channel (+i)\r\n";	
+				break;
+			}
+		case 474: //ERR_BANNEDFROMCHAN
+			{
+				msg += _client->getActualChannel()->getName() + " :Cannot join channel (+b)\r\n";	
+				break;
+			}
+		case 475: //ERR_BADCHANNELKEY
+			{
+				msg += _client->getActualChannel()->getName() + " :Cannot join channel (+k)\r\n";	
+				break;
+			}
+		case 476: //ERR_BADCHANMASK
+			{
+//sur celui la c'est chiant car on doit pas mettre le username() donc peut etre tout à changer
+				msg += _client->getActualChannel()->getName() + " :Bad Channel Mask\r\n";	
 				break;
 			}
 	}
