@@ -104,6 +104,17 @@ void	Command::nick()
 {
 	std::cout << "On est dans nick" << std::endl;
 	//a voir si on laisse size < 2 car j'ai trouvé ça sur adri mais je trouve pas un doc officiel qui explique ça
+	// tu confonds adrien regarde pas si [acutal_cmd][1] est plus pettit que 2
+	// il regarde si [actual_cmd] a au moins deux strings!!!! donc en gros si il y 'a bien un nickname derriere NICK
+	//nickname   =  ( letter / special ) *8( letter / digit / special / "-" )
+	/*
+	Nicknames are non-empty strings with the following restrictions:
+
+    They MUST NOT contain any of the following characters: space (' ', 0x20), comma (',', 0x2C), asterisk ('*', 0x2A), question mark ('?', 0x3F), exclamation mark ('!', 0x21), at sign ('@', 0x40).
+    They MUST NOT start with any of the following characters: dollar ('$', 0x24), colon (':', 0x3A).
+    They MUST NOT start with a character listed as a channel type prefix.
+    They SHOULD NOT contain any dot character ('.', 0x2E).
+	*/
 	if (_cmd[_actual_cmd][1].size() < 2)
 	{
 		sendToClient(431); //ERR_NONICKNAMEGIVEN
@@ -132,6 +143,8 @@ void	Command::user()
 {
 	std::cout << "slt on est dans user" << std::endl;
 	//si le status est encore TO_REGISTER alors on va dans le if
+	//nn c est l inverse que t as ecrit tu vas dans le if si il est pas
+	//sur TO_REGISTER
 	if (_client->getStatus() != 0)
 	{
 		sendToClient(462); //ERR_ALREADYREGISTERED
@@ -257,6 +270,7 @@ void Command::sendToClient(int numeric_replies)
 		case 476: //ERR_BADCHANMASK
 			{
 //sur celui la c'est chiant car on doit pas mettre le username() donc peut etre tout à changer
+// suffit juste de faire un if au debut ou pr ce cas on change le debut du message
 				msg += _client->getActualChannel()->getName() + " :Bad Channel Mask\r\n";	
 				break;
 			}
