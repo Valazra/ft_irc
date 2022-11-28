@@ -11,4 +11,13 @@ std::string to_string(T n)
 	return (ss.str());
 }	
 
+std::string insert_zeros(int nbr)
+{
+	if (nbr >= 0 && nbr <= 9)
+		return (to_string(00));
+	if (nbr >= 10 && nbr <= 99)
+		return (to_string(0));
+	return(std::string());
+}
+
 #endif

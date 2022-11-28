@@ -15,6 +15,7 @@ class Command
 		Command(std::map<int, Client *> *client_map, std::string password);
 		~Command();
 		void readCmd(int client_socket);
+		void execCmd();
 		void registerAttempt();
 		void splitCommand(std::string msg);
 		void sendToClient(int numeric_replies);
@@ -35,7 +36,7 @@ class Command
 
 		std::map<int, Client *> *_clients_ptr;
 		Client *_client;
-		std::vector<std::vector<std::string> > _cmd;
+		std::vector<std::vector<std::string> >* _cmd;
 		int _client_socket;
 		userStatus _client_status;
 		int	_actual_cmd;

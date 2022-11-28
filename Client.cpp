@@ -110,9 +110,9 @@ void Client::setStatus(userStatus status)
 	_status = status;	
 }
 
-std::vector<std::vector<std::string> > Client::getCmd()
+std::vector<std::vector<std::string> > *Client::getCmd()
 {
-	return (_cmd);
+	return (&_cmd);
 }
 
 bool Client::getMsgFinish()

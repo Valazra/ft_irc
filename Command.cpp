@@ -19,20 +19,22 @@ Command::~Command()
 
 void	Command::registerAttempt()
 {
-	for (std::vector<std::vector<std::string> >::iterator it = _cmd.begin(); it != _cmd.end(); ++it)
+
+	_client->setStatus(REGISTER);
+}
+
+void Command::execCmd()
+{
+	for (std::vector<std::vector<std::string> >::iterator it = (*_cmd).begin(); it != (*_cmd).end(); ++it)
 	{
 		if ((it->empty()))
-			break ;
+			return ;
 		std::cout << it->front() << std::endl;
 		(this->*_cmd_availables[it->front()])();
 		if (_fatal_error)
 			return ;
 		_actual_cmd++;
 	}
-	std::vector<std::vector<std::string> >::iterator it1 = _cmd.begin();
-	std::vector<std::vector<std::string> >::iterator it2 = _cmd.end();
-	_cmd.erase(it1, it2);
-	_client->setStatus(REGISTER);
 }
 
 void Command::readCmd(int client_socket)
@@ -45,48 +47,36 @@ void Command::readCmd(int client_socket)
 	_client_status = _client->getStatus();
 	if (_client->getStatus() == TO_REGISTER)
 	{
+		std::cout << "Command::readCmd TO_REGISTER" << std::endl;
+		execCmd();
+		(*_cmd).clear();
 		registerAttempt();
-		std::cout << "PHASE ENREGISTREMENT" << std::endl;
 	}
 	else
 	{
-		//bien effacer les cmds quand on a finit de les utiliser, les reinit a 0?
-		//faire pareil quand on enleve un client bien tout clean ce qui est en 
-		//rapport avec lui 
-		/*
-	for (std::vector<std::vector<std::string> >::iterator it = _cmd.begin(); it != _cmd.end(); ++it)
-	{
-		if ((it->empty()))
-			break ;
-		std::cout << it->front() << std::endl;
-		(this->*_cmd_availables[it->front()])();
-		if (_fatal_error)
-			return ;
-		_actual_cmd++;
-		*/
-		std::cout << "PHASE AUTRES COMMANDES" << std::endl;
+		std::cout << "Command::readCmd REGISTER" << std::endl;
+		execCmd();
+		(*_cmd).clear();
 	}
 }
 
 void	Command::cap()
 {
-	std::cout << "ON NE FAIT RIEN POUR CAP, ON IGNORE ET ON CONTINUE" << std::endl;
+	std::cout << "Command::cap" << std::endl;
 }
 
 void	Command::pass()
 {
-	std::cout << "On est dans pass" << std::endl;
-	std::cout << "bon pass du serv = " << _password << std::endl;
-	std::cout << "pass envoyé par le client = " << _cmd[_actual_cmd][1] << std::endl;
-	if (_cmd[_actual_cmd][1] == _password)
-		std::cout << "bon password bravo" << std::endl;
+	std::cout << "Command::pass | Pass attendu:" << _password << " | Pass recu = "
+	<< (*_cmd)[_actual_cmd][1] << std::endl;
+	if ((*_cmd)[_actual_cmd][1] == _password)
+		std::cout << "Good pass." << std::endl;
 	else
 	{
 		sendToClient(464); //ERR_PASSWDMISMATCH
 		fatalError("You SHOULD try to connect with the good password.");
 		return ;
 	}
-
 	//
 	/*
 	   if (client->isRegistered() == true)
@@ -124,7 +114,7 @@ int Command::checkNickname(std::string nickname)
 
 void	Command::nick()
 {
-	std::cout << "On est dans nick" << std::endl;
+	std::cout << "Command::nick" << std::endl;
 	/*
 	Nicknames are non-empty strings with the following restrictions:
 
@@ -133,33 +123,34 @@ void	Command::nick()
     They MUST NOT start with a character listed as a channel type prefix.
     They SHOULD NOT contain any dot character ('.', 0x2E).
 	*/
-	if (!parsingNickname(_cmd[_actual_cmd][1]))
+	if (!parsingNickname((*_cmd)[_actual_cmd][1]))
 	{
 		sendToClient(432); //ERR_ERRONEUSNICKNAME
 		return ;
 	}
-	else if (!checkNickname(_cmd[_actual_cmd][1]))
+	else if (!checkNickname((*_cmd)[_actual_cmd][1]))
 	{
 		sendToClient(433); //ERR_NICKNAMEINUSE
 		return ;
 	}
-	else if (_cmd[_actual_cmd][1].length() < 1)
+	else if ((*_cmd)[_actual_cmd][1].length() < 1)
 	{
 		sendToClient(431); //ERR_NONICKNAMEGIVEN
 		return ;
 	}
 	else
 	{
-		std::cout << "_client->getNickname() = " << _client->getNickname() << std::endl;
-		_client->setNickname(_cmd[_actual_cmd][1]);
-		std::cout << "_client->getNickname() = " << _client->getNickname() << std::endl;
+		//probleme a faire getnickname alors que il y en a pas au debut?
+		std::cout << "old nick name = " << _client->getNickname() << std::endl;
+		_client->setNickname((*_cmd)[_actual_cmd][1]);
+		std::cout << "new nick name = " << _client->getNickname() << std::endl;
 		//avertir le client que la commande nick est successfull et avertir les autres clients du changement de nickname
 	}
 
 }
 void	Command::user()
 {
-	std::cout << "slt on est dans user" << std::endl;
+	std::cout << "Command::user" << std::endl;
 	//si le status est pas sur TO_REGISTER alors on va dans le if
 	if (_client->getStatus() != 0)
 	{
@@ -167,7 +158,7 @@ void	Command::user()
 		std::cout << "err_alreadyregistered" << std::endl;
 		return ;
 	}
-	else if ((_cmd[_actual_cmd][1]).length() < 1)
+	else if (((*_cmd)[_actual_cmd][1]).length() < 1)
 	{
 		sendToClient(461); //ERR_NEEDMOREPARAMS
 		return ;
@@ -175,17 +166,14 @@ void	Command::user()
 	else
 	{ 
 		std::cout << "_client->getUsername() = " << _client->getUsername() << std::endl;
-		_client->setUsername(_cmd[_actual_cmd][1]);
+		_client->setUsername((*_cmd)[_actual_cmd][1]);
 		std::cout << "_client->getUsername() = " << _client->getUsername() << std::endl;
 	}
+	//si on peut appeller user plusieurs fois faut pas mettre les sendclient ici
 	sendToClient(1);
 	sendToClient(2);
 	sendToClient(3);
 	sendToClient(4);
-	/*
-	sendToClient(5);
-	*/
-
 }
 
 void	Command::join()
@@ -194,7 +182,7 @@ void	Command::join()
 	for (std::vector<Channel *>::iterator it = _client->getAllChannels().begin() ; it != _client->getAllChannels().end() ; ++it)
 	{
 		//si le chan existe déjà
-		if ((*it)->getName() == _cmd[_actual_cmd][1])
+		if ((*it)->getName() == (*_cmd)[_actual_cmd][1])
 		{
 			//on rejoint le chan et on quitte la commande
 			_client->setActualChannel(*it); 
@@ -202,7 +190,7 @@ void	Command::join()
 		}
 	}
 	//si le chan existe pas : on le crée
-	Channel new_chan(_cmd[_actual_cmd][1], _client);
+	Channel new_chan((*_cmd)[_actual_cmd][0], _client);
 	//on ajoute le nouveau chan à la liste _all_chans de tous les clients
 	for (std::map<int, Client *>::iterator it = (*_clients_ptr).begin() ; it != (*_clients_ptr).end() ; ++it)
 		(*it).second->add_channel(&new_chan);
@@ -212,14 +200,10 @@ void Command::sendToClient(int numeric_replies)
 {
 	std::string msg;
 
-	//	if (numeric_replies <= 5)
-	//	{
-	// :server_name c'est le prefix
-	// ensuite la command qui dans notre cas est represente par son numero de reponse
-	// et finalement les params
-	// FAIRE EN SORTE QUE LE 00 SE METTE AUTO QUAND 1 DIGIT ET UN 0 QUAND DEUX DIGITS ET RIEN QUAND PAS DE 0
-	msg = ":" + _server_name + " 00" + to_string(numeric_replies) + " " + _client->getNickname() + " :";
-	//	}
+	if (numeric_replies)
+		msg = ":" + _server_name + insert_zeros(numeric_replies) + to_string(numeric_replies) + " " + _client->getNickname() + " :";
+	else if ()
+		msg = "si besoin";
 	switch (numeric_replies)
 	{
 		case 1: //RPL_WELCOME
@@ -284,7 +268,7 @@ void Command::sendToClient(int numeric_replies)
 			}
 		case 461: //ERR_NEEDMOREPARAMS
 			{
-				msg += _cmd[_actual_cmd][0] + " :Not enough parameters\r\n";
+				msg += (*_cmd)[_actual_cmd][0] + " :Not enough parameters\r\n";
 				break;
 			}
 		case 462: //ERR_ALREADYREGISTERED

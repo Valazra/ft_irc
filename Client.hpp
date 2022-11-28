@@ -41,7 +41,7 @@ class Client
 		userStatus getStatus();
 		void setStatus(userStatus status);
 		void receive();
-		std::vector<std::vector<std::string> > getCmd();
+		std::vector<std::vector<std::string> > * getCmd();
 		
 		void splitCommand();
 		bool getMsgFinish();
