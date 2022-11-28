@@ -16,23 +16,24 @@ class Command
 		~Command();
 		void readCmd(int client_socket);
 		void execCmd();
-		void registerAttempt();
 		void splitCommand(std::string msg);
 		void sendToClient(int numeric_replies);
 		void fatalError(std::string msg_error);
 		int parsingNickname(std::string nickname);
 		int checkNickname(std::string nickname);
 
+	private:
+		Command();
+		Command(Command const &src);
+		Command &operator=(Command const & src);
+
+		void oper();
 		void cap();
 		void pass();
 		void nick();
 		void user();
 		void join();
-
-	private:
-		Command();
-		Command(Command const &src);
-		Command &operator=(Command const & src);
+		void quit();
 
 		std::map<int, Client *> *_clients_ptr;
 		Client *_client;
@@ -43,7 +44,8 @@ class Command
 		std::map<std::string, void(Command::*)()> _cmd_availables;
 		std::string _password;
 		std::string _server_name;
-		int _fatal_error;
+		bool _fatal_error;
+		bool _correctPass;
 };
 
 #endif

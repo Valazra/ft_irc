@@ -1,26 +1,19 @@
 #include "Command.hpp"
 
 Command::Command(std::map<int, Client *> *client_map, std::string password):
-	_clients_ptr(client_map), _password(password), _server_name("localhost"),
-	_fatal_error(0)
+	_clients_ptr(client_map), _password(password), _server_name("localhost"), _fatal_error(0), _correctPass(false)
 {
+	_cmd_availables["OPER"] = &Command::oper;
 	_cmd_availables["CAP"] = &Command::cap;
 	_cmd_availables["PASS"] = &Command::pass;
 	_cmd_availables["NICK"] = &Command::nick;
 	_cmd_availables["USER"] = &Command::user;
 	_cmd_availables["JOIN"] = &Command::join;
+	_cmd_availables["QUIT"] = &Command::quit;
 }
 
 Command::~Command()
 {
-}
-
-
-
-void	Command::registerAttempt()
-{
-
-	_client->setStatus(REGISTER);
 }
 
 void Command::execCmd()
@@ -39,7 +32,8 @@ void Command::execCmd()
 
 void Command::readCmd(int client_socket)
 {
-	_fatal_error = 0;
+	_fatal_error = false;
+	_correctPass = false;
 	_client_socket = client_socket;
 	_client = (*_clients_ptr)[client_socket];
 	_cmd = _client->getCmd();
@@ -50,7 +44,7 @@ void Command::readCmd(int client_socket)
 		std::cout << "Command::readCmd TO_REGISTER" << std::endl;
 		execCmd();
 		(*_cmd).clear();
-		registerAttempt();
+		_client->setStatus(REGISTER);
 	}
 	else
 	{
@@ -60,6 +54,24 @@ void Command::readCmd(int client_socket)
 	}
 }
 
+void	Command::oper()
+{
+//	if (_client->getOper() == false)
+//	{
+		if ((*_cmd)[_actual_cmd].size() != 3)
+		{
+			sendToClient(461); //ERR_NEEDMOREPARAMS
+			return ;
+		}
+		else if (_client->getStatus() != REGISTER)
+		{
+			sendToClient(491); //ERR_NOOPERHOST
+			return ;
+		}
+//	}
+
+}
+
 void	Command::cap()
 {
 	std::cout << "Command::cap" << std::endl;
@@ -67,10 +79,21 @@ void	Command::cap()
 
 void	Command::pass()
 {
-	std::cout << "Command::pass | Pass attendu:" << _password << " | Pass recu = "
-	<< (*_cmd)[_actual_cmd][1] << std::endl;
+	std::cout << "Command::pass | Pass attendu:" << _password << " | Pass recu = " << (*_cmd)[_actual_cmd][1] << std::endl;
+	if (_client->getStatus() != 0)
+	{
+		sendToClient(462); //ERR_ALREADYREGISTERED
+		return ;
+	}
+	else if ((*_cmd)[_actual_cmd].size() < 2)
+	{
+		sendToClient(461); //ERR_NEEDMOREPARAMS
+		return ;
+	}
 	if ((*_cmd)[_actual_cmd][1] == _password)
-		std::cout << "Good pass." << std::endl;
+	{
+		_correctPass = true;
+	}
 	else
 	{
 		sendToClient(464); //ERR_PASSWDMISMATCH
@@ -92,10 +115,13 @@ void	Command::pass()
 
 int Command::parsingNickname(std::string nickname)
 {
-	std::string special(" *,?!@:[]{}|$.^_\\"); //pris sur Adrien mais à vérif
-	for (std::string::iterator it = nickname.begin() ; it != nickname.end() ; it++)
+//find renvoie npos si aucune occurence n'a été trouvée, sinon ça renvoie l'endroit ou l'occurence à été trouvée
+	std::string forbidden(" ,*?!@.");
+	if (nickname[0] == '$' || nickname[0] == ':' || forbidden.find(nickname[0], 0) != std::string::npos)
+		return (0);
+	for (std::string::iterator it = nickname.begin() + 1 ; it != nickname.end() ; it++)
 	{
-		if (!isalpha(*it) && special.find(*it, 0) == std::string::npos && *it != '-' && !isdigit(*it))
+		if (forbidden.find((*it), 0) != std::string::npos)
 			return (0);
 	}
 	return (1);
@@ -133,7 +159,7 @@ void	Command::nick()
 		sendToClient(433); //ERR_NICKNAMEINUSE
 		return ;
 	}
-	else if ((*_cmd)[_actual_cmd][1].length() < 1)
+	else if ((*_cmd)[_actual_cmd].size() != 2)
 	{
 		sendToClient(431); //ERR_NONICKNAMEGIVEN
 		return ;
@@ -151,14 +177,19 @@ void	Command::nick()
 void	Command::user()
 {
 	std::cout << "Command::user" << std::endl;
+	if (!_correctPass)
+	{
+		sendToClient(464); //ERR_PASSWDMISMATCH
+		fatalError("You should connect with a password.");
+		return ;
+	}
 	//si le status est pas sur TO_REGISTER alors on va dans le if
 	if (_client->getStatus() != 0)
 	{
 		sendToClient(462); //ERR_ALREADYREGISTERED
-		std::cout << "err_alreadyregistered" << std::endl;
 		return ;
 	}
-	else if (((*_cmd)[_actual_cmd][1]).length() < 1)
+	else if ((*_cmd)[_actual_cmd].size() < 2)
 	{
 		sendToClient(461); //ERR_NEEDMOREPARAMS
 		return ;
@@ -169,7 +200,6 @@ void	Command::user()
 		_client->setUsername((*_cmd)[_actual_cmd][1]);
 		std::cout << "_client->getUsername() = " << _client->getUsername() << std::endl;
 	}
-	//si on peut appeller user plusieurs fois faut pas mettre les sendclient ici
 	sendToClient(1);
 	sendToClient(2);
 	sendToClient(3);
@@ -196,14 +226,21 @@ void	Command::join()
 		(*it).second->add_channel(&new_chan);
 }
 
+void	Command::quit()
+{
+//faudra bien tout libérer ici
+//fatal_error
+	_client->setStatus(REMOVE_ME);
+}
+
 void Command::sendToClient(int numeric_replies)
 {
 	std::string msg;
 
 	if (numeric_replies)
 		msg = ":" + _server_name + insert_zeros(numeric_replies) + to_string(numeric_replies) + " " + _client->getNickname() + " :";
-	else if ()
-		msg = "si besoin";
+//	else if ()
+//		msg = "si besoin";
 	switch (numeric_replies)
 	{
 		case 1: //RPL_WELCOME
@@ -232,33 +269,33 @@ void Command::sendToClient(int numeric_replies)
 		}
 		case 5:
 		{
-			msg +="Sorry IRC_90's capacity is full. Please retry connection later\r\n";
+			msg += "Sorry IRC_90's capacity is full. Please retry connection later\r\n";
 				std::cout << msg << std::endl;
 			break;
 		}	
 		case 403: //ERR_NOSUCHCHANNEL
 			{
-				msg += _client->getActualChannel()->getName() + " :No such channel\r\n";	
+				msg += _client->getUsername() + " " + _client->getActualChannel()->getName() + " :No such channel\r\n";	
 				break;
 			}
 		case 405: //ERR_TOOMANYCHANNELS
 			{
-				msg += _client->getActualChannel()->getName() + " :You have  joined too many channels\r\n";
+				msg += _client->getUsername() + " " + _client->getActualChannel()->getName() + " :You have  joined too many channels\r\n";
 				break;
 			}
 		case 431: //ERR_NONICKNAMEGIVEN
 			{
-				msg += ":No nickname given\r\n";	
+				msg += " :No nickname given\r\n";	
 				break;
 			}
 		case 432: //ERR_ERRONEUSNICKNAME
 			{
-				msg += _client->getNickname() + " :Erroneus nickname\r\n";	
+				msg += _client->getUsername() + " " + _client->getNickname() + " :Erroneus nickname\r\n";	
 				break;
 			}
 		case 433: //ERR_NICKNAMEINUSE
 			{
-				msg += _client->getNickname() + " :Nickname is already in use\r\n";	
+				msg += _client->getUsername() + " " +  _client->getNickname() + " :Nickname is already in use\r\n";	
 				break;
 			}
 		case 436: //ERR_NICKCOLLISION
@@ -268,50 +305,53 @@ void Command::sendToClient(int numeric_replies)
 			}
 		case 461: //ERR_NEEDMOREPARAMS
 			{
-				msg += (*_cmd)[_actual_cmd][0] + " :Not enough parameters\r\n";
+				msg += _client->getUsername() + " " + (*_cmd)[_actual_cmd][0] + " :Not enough parameters\r\n";
 				break;
 			}
 		case 462: //ERR_ALREADYREGISTERED
 			{
-				msg += ":You may not reregister\r\n";	
+				msg += _client->getUsername() + " :You may not reregister\r\n";	
 				break;
 			}
 		case 464: //ERR_PASSWDMISMATCH
 			{
-				msg += ":Password incorrect\r\n";	
+				msg += _client->getUsername() + " :Password incorrect\r\n";	
 				break;
 			}
 		case 471: //ERR_CHANNELISFULL
 			{
-				msg += _client->getActualChannel()->getName() + " :Cannot join channel (+1)\r\n";	
+				msg += _client->getUsername() + " " + _client->getActualChannel()->getName() + " :Cannot join channel (+1)\r\n";	
 				break;
 			}
 		case 473: //ERR_INVITEONLYCHAN
 			{
-				msg += _client->getActualChannel()->getName() + " :Cannot join channel (+i)\r\n";	
+				msg += _client->getUsername() + " " + _client->getActualChannel()->getName() + " :Cannot join channel (+i)\r\n";	
 				break;
 			}
 		case 474: //ERR_BANNEDFROMCHAN
 			{
-				msg += _client->getActualChannel()->getName() + " :Cannot join channel (+b)\r\n";	
+				msg += _client->getUsername() + " " + _client->getActualChannel()->getName() + " :Cannot join channel (+b)\r\n";	
 				break;
 			}
 		case 475: //ERR_BADCHANNELKEY
 			{
-				msg += _client->getActualChannel()->getName() + " :Cannot join channel (+k)\r\n";	
+				msg += _client->getUsername() + " " + _client->getActualChannel()->getName() + " :Cannot join channel (+k)\r\n";	
 				break;
 			}
 		case 476: //ERR_BADCHANMASK
 			{
-//sur celui la c'est chiant car on doit pas mettre le username() donc peut etre tout à changer
-// suffit juste de faire un if au debut ou pr ce cas on change le debut du message
 				msg += _client->getActualChannel()->getName() + " :Bad Channel Mask\r\n";	
 				break;
+			}
+		case 491: //ERR_NOOPERHOST
+			{
+				msg += _client->getUsername() + " :No O-lines for your host\r\n";	
 			}
 	}
 	send(_client_socket, msg.c_str(), msg.size(), 0);
 }
 
+//send to target (message privé)
 
 void Command::fatalError(std::string msg_error)
 {
@@ -320,7 +360,7 @@ void Command::fatalError(std::string msg_error)
 	std::cout << msg << std::endl;
 
 	send(_client_socket, msg.c_str(), msg.size(), 0);
-	_fatal_error = 1;
+	_fatal_error = true;
 	close(_client_socket);
 	(*_clients_ptr).erase(_client_socket);
 	std::cout << "fatalError" << std::endl;

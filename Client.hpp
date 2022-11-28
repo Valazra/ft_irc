@@ -55,6 +55,7 @@ class Client
 		Channel *getActualChannel();
 		void setActualChannel(Channel *channel);
 		std::vector<Channel *> getAllChannels();
+		bool getOper();
 
 	private:
 		Client();
@@ -72,6 +73,7 @@ class Client
 //mettre en vector si un client peut avoir plusieurs chans en meme temps
 		Channel *_actual_channel;
 		std::vector<Channel *> _all_channels;
+		bool		_oper;
 };
 
 #endif
