@@ -156,6 +156,7 @@ void	Command::user()
 		_client->setUsername(_cmd[_actual_cmd][1]);
 		std::cout << "_client->getUsername() = " << _client->getUsername() << std::endl;
 	}
+	sendToClient(1);
 }
 
 void	Command::join()
@@ -187,13 +188,14 @@ void Command::sendToClient(int numeric_replies)
 	// :server_name c'est le prefix
 	// ensuite la command qui dans notre cas est represente par son numero de reponse
 	// et finalement les params
-	msg == ":" + _server_name + " " + to_string(numeric_replies) + " " + _client->getUsername() + " ";
+	msg = ":" + _server_name + " " + to_string(numeric_replies) + " " + _client->getNickname() + " :";
 	//	}
 	switch (numeric_replies)
 	{
 		case 1: //RPL_WELCOME
 			{			
-				msg += ":Welcome to the Internet Relay Network " + _client->getNickname() + "\r\n";
+				msg += "Welcome to the Internet Relay Network " + _client->getNickname() + "\r\n";
+				std::cout << msg << std::endl;
 				break;
 			}
 		case 403: //ERR_NOSUCHCHANNEL

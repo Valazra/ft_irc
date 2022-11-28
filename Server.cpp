@@ -112,14 +112,14 @@ void Server::run()
 
 	//irc deco les clients qui repondent pas a leur ping a temps ca doit 
 	//etre un truc en rapport
-	if (std::time(0) - last_ping >= PING)
+/*	if (std::time(0) - last_ping >= PING)
 	{
 		sendPing();
 		last_ping = std::time(0);
 	}
 	else
 	{
-	   //en gros on regarde dans les events POLLIN qu'on a recu, si c'est la 
+*/	   //en gros on regarde dans les events POLLIN qu'on a recu, si c'est la 
 	   //socket 0 c est un nouvel utilisateur donc on appel un truc pour voir
 	   //si on va accept cet utilisateur tcheck mot de passe etc...
 	   //ELSE si c'est un autre socket qui POLLIN c est que c est un gars
@@ -141,7 +141,7 @@ void Server::run()
 					}
 				}
 			}
-	}
+//	}
 }
 
 void Server::check_new_client()
@@ -176,10 +176,6 @@ void Server::check_new_client()
 void	Server::treat_complete_msg(int const &client_sock)
 {
 	_cmd.readCmd(client_sock);
-//	if (_clients[client_sock]->getStatus() == TO_REGISTER)
-//		registerClient(client_sock);
-//	else
-//		_command_book.find_command(client->getCommand().front(), client, _all_clients, &_all_channels);
 //	_client[client_sock]->clearMessage();
 //	_clients[client_sock]->clearCommand();
 //	_clients[client_sock]->clearCommand();
