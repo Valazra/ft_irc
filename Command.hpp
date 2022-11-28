@@ -34,6 +34,7 @@ class Command
 		void user();
 		void join();
 		void quit();
+		std::string insert_zeros(int nbr);
 
 		std::map<int, Client *> *_clients_ptr;
 		Client *_client;

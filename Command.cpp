@@ -48,9 +48,12 @@ void Command::readCmd(int client_socket)
 	}
 	else
 	{
+		/*
 		std::cout << "Command::readCmd REGISTER" << std::endl;
 		execCmd();
-		(*_cmd).clear();
+		*/
+		if ((*_cmd).size() > 0)
+			(*_cmd).clear();
 	}
 }
 
@@ -196,9 +199,9 @@ void	Command::user()
 	}
 	else
 	{ 
-		std::cout << "_client->getUsername() = " << _client->getUsername() << std::endl;
+		std::cout << "_client->getUsername() = " << _client->getUsername() << "|" << std::endl;
 		_client->setUsername((*_cmd)[_actual_cmd][1]);
-		std::cout << "_client->getUsername() = " << _client->getUsername() << std::endl;
+		std::cout << "_client->getUsername() = " << _client->getUsername() << "|"<< std::endl;
 	}
 	sendToClient(1);
 	sendToClient(2);
@@ -238,17 +241,17 @@ void Command::sendToClient(int numeric_replies)
 	std::string msg;
 
 	if (numeric_replies)
-		msg = ":" + _server_name + insert_zeros(numeric_replies) + to_string(numeric_replies) + " " + _client->getNickname() + " :";
+		msg = ":" + _server_name + " " + insert_zeros(numeric_replies) + to_string(numeric_replies) + " " + _client->getNickname() + " :";
 //	else if ()
 //		msg = "si besoin";
 	switch (numeric_replies)
 	{
 		case 1: //RPL_WELCOME
-			{			
+		{			
 				msg += "Welcome to the Internet Relay Network " + _client->getNickname() + "\r\n";
 				std::cout << msg << std::endl;
 				break;
-			}
+		}
 		case 2:
 		{
 			msg += "Your host is " + _server_name + ", running on version [42.42]\r\n";
@@ -270,86 +273,111 @@ void Command::sendToClient(int numeric_replies)
 		case 5:
 		{
 			msg += "Sorry IRC_90's capacity is full. Please retry connection later\r\n";
-				std::cout << msg << std::endl;
+			std::cout << msg << std::endl;
 			break;
 		}	
 		case 403: //ERR_NOSUCHCHANNEL
-			{
+		{
 				msg += _client->getUsername() + " " + _client->getActualChannel()->getName() + " :No such channel\r\n";	
 				break;
-			}
+		}
 		case 405: //ERR_TOOMANYCHANNELS
-			{
-				msg += _client->getUsername() + " " + _client->getActualChannel()->getName() + " :You have  joined too many channels\r\n";
+		{
+			msg += _client->getUsername() + " " + _client->getActualChannel()->getName() + " :You have  joined too many channels\r\n";
 				break;
-			}
+		}
 		case 431: //ERR_NONICKNAMEGIVEN
-			{
-				msg += " :No nickname given\r\n";	
-				break;
-			}
+		{
+			msg += " :No nickname given\r\n";	
+			break;
+		}
 		case 432: //ERR_ERRONEUSNICKNAME
-			{
-				msg += _client->getUsername() + " " + _client->getNickname() + " :Erroneus nickname\r\n";	
-				break;
-			}
+		{
+			msg += _client->getUsername() + " " + _client->getNickname() + " :Erroneus nickname\r\n";	
+			break;
+		}
 		case 433: //ERR_NICKNAMEINUSE
-			{
-				msg += _client->getUsername() + " " +  _client->getNickname() + " :Nickname is already in use\r\n";	
-				break;
-			}
+		{
+			msg += _client->getUsername() + " " +  _client->getNickname() + " :Nickname is already in use\r\n";	
+			break;
+		}
 		case 436: //ERR_NICKCOLLISION
-			{
-				msg += _client->getNickname() + " :Nickname collision KILL from " + _client->getUsername() + "@" + _client->getHostname() + "\r\n";	
-				break;
-			}
+		{
+			msg += _client->getNickname() + " :Nickname collision KILL from " + _client->getUsername() + "@" + _client->getHostname() + "\r\n";	
+			break;
+		}
 		case 461: //ERR_NEEDMOREPARAMS
-			{
-				msg += _client->getUsername() + " " + (*_cmd)[_actual_cmd][0] + " :Not enough parameters\r\n";
-				break;
-			}
+		{
+			msg += _client->getUsername() + " " + (*_cmd)[_actual_cmd][0] + " :Not enough parameters\r\n";
+			std::cout << msg << std::endl;
+			break;
+		}
 		case 462: //ERR_ALREADYREGISTERED
-			{
-				msg += _client->getUsername() + " :You may not reregister\r\n";	
-				break;
-			}
+		{
+			msg += _client->getUsername() + " :You may not reregister\r\n";	
+			break;
+		}
 		case 464: //ERR_PASSWDMISMATCH
-			{
-				msg += _client->getUsername() + " :Password incorrect\r\n";	
-				break;
-			}
+		{
+			msg += _client->getUsername() + " :Password incorrect\r\n";	
+			break;
+		}
 		case 471: //ERR_CHANNELISFULL
-			{
-				msg += _client->getUsername() + " " + _client->getActualChannel()->getName() + " :Cannot join channel (+1)\r\n";	
-				break;
-			}
+		{
+			msg += _client->getUsername() + " " + _client->getActualChannel()->getName() + " :Cannot join channel (+1)\r\n";	
+			break;
+		}
 		case 473: //ERR_INVITEONLYCHAN
-			{
-				msg += _client->getUsername() + " " + _client->getActualChannel()->getName() + " :Cannot join channel (+i)\r\n";	
-				break;
-			}
+		{
+			msg += _client->getUsername() + " " + _client->getActualChannel()->getName() + " :Cannot join channel (+i)\r\n";	
+			break;
+		}
 		case 474: //ERR_BANNEDFROMCHAN
-			{
-				msg += _client->getUsername() + " " + _client->getActualChannel()->getName() + " :Cannot join channel (+b)\r\n";	
-				break;
-			}
+		{
+			msg += _client->getUsername() + " " + _client->getActualChannel()->getName() + " :Cannot join channel (+b)\r\n";	
+			break;
+		}
 		case 475: //ERR_BADCHANNELKEY
-			{
-				msg += _client->getUsername() + " " + _client->getActualChannel()->getName() + " :Cannot join channel (+k)\r\n";	
-				break;
-			}
+		{
+			msg += _client->getUsername() + " " + _client->getActualChannel()->getName() + " :Cannot join channel (+k)\r\n";	
+			break;
+		}
 		case 476: //ERR_BADCHANMASK
-			{
-				msg += _client->getActualChannel()->getName() + " :Bad Channel Mask\r\n";	
-				break;
-			}
+		{
+			msg += _client->getActualChannel()->getName() + " :Bad Channel Mask\r\n";	
+			break;
+		}
 		case 491: //ERR_NOOPERHOST
-			{
-				msg += _client->getUsername() + " :No O-lines for your host\r\n";	
-			}
+		{
+			msg += _client->getUsername() + " :No O-lines for your host\r\n";	
+			break;
+		}
+		default :
+		{
+			 msg = "gros fdp\r\n";
+			 break ;
+		}
+		
 	}
 	send(_client_socket, msg.c_str(), msg.size(), 0);
 }
+
+std::string Command::insert_zeros(int nbr)
+{
+	std::string tmp("");
+	if (nbr >= 0 && nbr <= 9)
+	{
+		tmp = to_string("00");
+		return (tmp);
+	}
+	if (nbr >= 10 && nbr <= 99)
+	{
+		tmp = to_string("0");
+		return (tmp);
+	}
+	return(tmp);
+}
+
 
 //send to target (message privé)
 
