@@ -33,6 +33,7 @@ class Command
 		void nick();
 		void user();
 		void join();
+		void privmsg();
 		void quit();
 		std::string insert_zeros(int nbr);
 

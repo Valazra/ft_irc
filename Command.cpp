@@ -9,6 +9,7 @@ Command::Command(std::map<int, Client *> *client_map, std::string password):
 	_cmd_availables["NICK"] = &Command::nick;
 	_cmd_availables["USER"] = &Command::user;
 	_cmd_availables["JOIN"] = &Command::join;
+	_cmd_availables["PRIVMSG"] = &Command::privmsg;
 	_cmd_availables["QUIT"] = &Command::quit;
 }
 
@@ -227,6 +228,17 @@ void	Command::join()
 	//on ajoute le nouveau chan à la liste _all_chans de tous les clients
 	for (std::map<int, Client *>::iterator it = (*_clients_ptr).begin() ; it != (*_clients_ptr).end() ; ++it)
 		(*it).second->add_channel(&new_chan);
+}
+
+void	Command::privmsg()
+{
+	//si target est un channel
+		//envoie le msg au chan
+	//si target est le nickname d'un user
+		//envoie le msg a l'user
+	// sinon
+		//ERR_NOSUCHNICK (401)
+			
 }
 
 void	Command::quit()

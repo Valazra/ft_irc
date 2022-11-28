@@ -24,8 +24,6 @@ void Client::receive()
 	{
 		_msg.clear();
 		_msg_finish = 0;
-		std::cout << "EST ON LA UN JOUR   |" << _msg << "|"<< std::endl;
-
 	}
 	//exception error plutot que return?
 	ssize_t size;
