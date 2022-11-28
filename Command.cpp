@@ -22,13 +22,16 @@ void	Command::registerAttempt()
 	for (std::vector<std::vector<std::string> >::iterator it = _cmd.begin(); it != _cmd.end(); ++it)
 	{
 		if ((it->empty()))
-			return ;
+			break ;
 		std::cout << it->front() << std::endl;
 		(this->*_cmd_availables[it->front()])();
 		if (_fatal_error)
 			return ;
 		_actual_cmd++;
 	}
+	std::vector<std::vector<std::string> >::iterator it1 = _cmd.begin();
+	std::vector<std::vector<std::string> >::iterator it2 = _cmd.end();
+	_cmd.erase(it1, it2);
 	_client->setStatus(REGISTER);
 }
 
@@ -41,9 +44,28 @@ void Command::readCmd(int client_socket)
 	_actual_cmd = 0;
 	_client_status = _client->getStatus();
 	if (_client->getStatus() == TO_REGISTER)
+	{
 		registerAttempt();
+		std::cout << "PHASE ENREGISTREMENT" << std::endl;
+	}
 	else
-		std::cout << "on est deja register" << std::endl;
+	{
+		//bien effacer les cmds quand on a finit de les utiliser, les reinit a 0?
+		//faire pareil quand on enleve un client bien tout clean ce qui est en 
+		//rapport avec lui 
+		/*
+	for (std::vector<std::vector<std::string> >::iterator it = _cmd.begin(); it != _cmd.end(); ++it)
+	{
+		if ((it->empty()))
+			break ;
+		std::cout << it->front() << std::endl;
+		(this->*_cmd_availables[it->front()])();
+		if (_fatal_error)
+			return ;
+		_actual_cmd++;
+		*/
+		std::cout << "PHASE AUTRES COMMANDES" << std::endl;
+	}
 }
 
 void	Command::cap()
@@ -157,6 +179,13 @@ void	Command::user()
 		std::cout << "_client->getUsername() = " << _client->getUsername() << std::endl;
 	}
 	sendToClient(1);
+	sendToClient(2);
+	sendToClient(3);
+	sendToClient(4);
+	/*
+	sendToClient(5);
+	*/
+
 }
 
 void	Command::join()
@@ -188,7 +217,8 @@ void Command::sendToClient(int numeric_replies)
 	// :server_name c'est le prefix
 	// ensuite la command qui dans notre cas est represente par son numero de reponse
 	// et finalement les params
-	msg = ":" + _server_name + " " + to_string(numeric_replies) + " " + _client->getNickname() + " :";
+	// FAIRE EN SORTE QUE LE 00 SE METTE AUTO QUAND 1 DIGIT ET UN 0 QUAND DEUX DIGITS ET RIEN QUAND PAS DE 0
+	msg = ":" + _server_name + " 00" + to_string(numeric_replies) + " " + _client->getNickname() + " :";
 	//	}
 	switch (numeric_replies)
 	{
@@ -198,6 +228,30 @@ void Command::sendToClient(int numeric_replies)
 				std::cout << msg << std::endl;
 				break;
 			}
+		case 2:
+		{
+			msg += "Your host is " + _server_name + ", running on version [42.42]\r\n";
+				std::cout << msg << std::endl;
+			break;
+		}
+		case 3:
+		{
+			msg += "This server was created 15h30 fdp\r\n";
+				std::cout << msg << std::endl;
+			break;
+		}
+		case 4:
+		{
+			msg += _server_name + " version [42.42]. Available user MODE : +Oa . Avalaible channel MODE : none. \r\n";
+				std::cout << msg << std::endl;
+			break;
+		}
+		case 5:
+		{
+			msg +="Sorry IRC_90's capacity is full. Please retry connection later\r\n";
+				std::cout << msg << std::endl;
+			break;
+		}	
 		case 403: //ERR_NOSUCHCHANNEL
 			{
 				msg += _client->getActualChannel()->getName() + " :No such channel\r\n";	

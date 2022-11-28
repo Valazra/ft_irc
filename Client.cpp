@@ -49,7 +49,7 @@ void Client::receive()
 	}
 	else
 		_msg_finish = 0;
-	std::cout << _msg << std::endl << std::endl << std::endl;
+	std::cout <<"MESSAGE BRUT: |" << _msg  << "|" << std::endl;
 }
 
 void Client::splitCommand()
