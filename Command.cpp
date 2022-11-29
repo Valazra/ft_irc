@@ -233,13 +233,13 @@ void	Command::user()
 void	Command::join()
 {
 //on parcoure tous les chans
-	for (std::vector<Channel *>::iterator it = _client->getAllChannels().begin() ; it != _client->getAllChannels().end() ; ++it)
+	for (std::vector<Channel *>::iterator it = getAllChannels().begin() ; it != getAllChannels().end() ; ++it)
 	{
 		//si le chan existe déjà
 		if ((*it)->getName() == (*_cmd)[_actual_cmd][1])
 		{
 			//on rejoint le chan et on quitte la commande
-			_client->setActualChannel(*it); 
+			setActualChannel(*it); 
 			return ;
 		}
 	}
@@ -247,7 +247,7 @@ void	Command::join()
 	Channel new_chan((*_cmd)[_actual_cmd][0], _client);
 	//on ajoute le nouveau chan à la liste _all_chans de tous les clients
 	for (std::map<int, Client *>::iterator it = (*_clients_ptr).begin() ; it != (*_clients_ptr).end() ; ++it)
-		(*it).second->add_channel(&new_chan);
+		add_channel(&new_chan);
 }
 
 void	Command::privmsg()
@@ -273,7 +273,7 @@ void	Command::privmsg()
 		}
 	}
 	//on parcoure tous les channels
-	for(std::vector<Channel *>::iterator it = _client->getAllChannels().begin() ; it != _client->getAllChannels().end() ; ++it)
+	for(std::vector<Channel *>::iterator it = getAllChannels().begin() ; it != getAllChannels().end() ; ++it)
 	{
 		//si la target correspond à un channel
 		if ((*it)->getName() == target_name)
@@ -361,17 +361,17 @@ void Command::sendToClient(int numeric_replies)
 		}
 		case 403: //ERR_NOSUCHCHANNEL
 		{
-				msg += _client->getUsername() + " " + _client->getActualChannel()->getName() + " :No such channel\r\n";	
+				msg += _client->getUsername() + " " + getActualChannel()->getName() + " :No such channel\r\n";	
 				break;
 		}
 		case 404: //ERR_CANNOTSENDTOCHAN
 		{
-			msg += _client->getUsername() + " " + _client->getActualChannel()->getName() + " :Cannot send to channel\r\n";
+			msg += _client->getUsername() + " " + getActualChannel()->getName() + " :Cannot send to channel\r\n";
 			break;
 		}
 		case 405: //ERR_TOOMANYCHANNELS
 		{
-			msg += _client->getUsername() + " " + _client->getActualChannel()->getName() + " :You have  joined too many channels\r\n";
+			msg += _client->getUsername() + " " + getActualChannel()->getName() + " :You have  joined too many channels\r\n";
 				break;
 		}
 		case 431: //ERR_NONICKNAMEGIVEN
@@ -411,27 +411,27 @@ void Command::sendToClient(int numeric_replies)
 		}
 		case 471: //ERR_CHANNELISFULL
 		{
-			msg += _client->getUsername() + " " + _client->getActualChannel()->getName() + " :Cannot join channel (+1)\r\n";	
+			msg += _client->getUsername() + " " + getActualChannel()->getName() + " :Cannot join channel (+1)\r\n";	
 			break;
 		}
 		case 473: //ERR_INVITEONLYCHAN
 		{
-			msg += _client->getUsername() + " " + _client->getActualChannel()->getName() + " :Cannot join channel (+i)\r\n";	
+			msg += _client->getUsername() + " " + getActualChannel()->getName() + " :Cannot join channel (+i)\r\n";	
 			break;
 		}
 		case 474: //ERR_BANNEDFROMCHAN
 		{
-			msg += _client->getUsername() + " " + _client->getActualChannel()->getName() + " :Cannot join channel (+b)\r\n";	
+			msg += _client->getUsername() + " " + getActualChannel()->getName() + " :Cannot join channel (+b)\r\n";	
 			break;
 		}
 		case 475: //ERR_BADCHANNELKEY
 		{
-			msg += _client->getUsername() + " " + _client->getActualChannel()->getName() + " :Cannot join channel (+k)\r\n";	
+			msg += _client->getUsername() + " " + getActualChannel()->getName() + " :Cannot join channel (+k)\r\n";	
 			break;
 		}
 		case 476: //ERR_BADCHANMASK
 		{
-			msg += _client->getActualChannel()->getName() + " :Bad Channel Mask\r\n";	
+			msg += getActualChannel()->getName() + " :Bad Channel Mask\r\n";	
 			break;
 		}
 		case 491: //ERR_NOOPERHOST
@@ -479,4 +479,48 @@ void Command::fatalError(std::string msg_error)
 	close(_client_socket);
 	(*_clients_ptr).erase(_client_socket);
 	std::cout << "fatalError" << std::endl;
+}
+
+// CHANNELS PART
+
+void Command::add_channel(Channel *channel)
+{
+	for (std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
+	{
+		if ((*it) == channel)
+			return ;
+	}
+	_all_channels.push_back(channel);
+	_actual_channel = channel;
+}
+
+void Command::leave_channel(Channel *channel)
+{
+	if (_actual_channel == channel)
+	{
+		for (std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
+		{
+			if ((*it) == channel)
+			{
+			//il faut suppr le chan de la liste de tous les chans
+				//(*it).erase();
+				_actual_channel = NULL;
+			}
+		}
+	}
+}
+
+Channel * Command::getActualChannel()
+{
+	return (_actual_channel);
+}
+
+void Command::setActualChannel(Channel *channel)
+{
+	this->_actual_channel = channel;
+}
+
+std::vector<Channel *> Command::getAllChannels()
+{
+	return (_all_channels);
 }

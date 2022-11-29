@@ -2,6 +2,7 @@
 # define COMMAND_HPP
 
 #include "Client.hpp"
+#include "Channel.hpp"
 #include "to_string.hpp"
 #include <map>
 #include <string>
@@ -26,6 +27,12 @@ class Command
 		int parsingNickname(std::string nickname);
 		int checkNickname(std::string nickname);
 		bool check_if_valid_cmd(std::string cmd);
+
+		void add_channel(Channel *channel);
+		void leave_channel(Channel *channel);
+		Channel *getActualChannel();
+		void setActualChannel(Channel *channel);
+		std::vector<Channel *> getAllChannels();
 
 	private:
 		Command();
@@ -54,6 +61,8 @@ class Command
 		std::string _server_name;
 		bool _fatal_error;
 		bool _correctPass;
+		Channel *_actual_channel;
+		std::vector<Channel *> _all_channels;
 };
 
 #endif
