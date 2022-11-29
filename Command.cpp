@@ -305,6 +305,7 @@ void Command::sendToTarget(std::string target_name, int target_socket)
 			msg += " ";
 		msg += *it2;
 	}
+	msg += "\r\n";
 	std::cout << "MSG ="<< msg << std::endl;
 	send(target_socket, msg.c_str(), msg.size(), 0);
 }
