@@ -2,7 +2,7 @@
 #include "Server.hpp"
 
 Client::Client(int sock, struct sockaddr_in address):
-	_sock(sock), _msg_finish(0), _status(TO_REGISTER), _hostname(),_nickname(), _username(), _oper(false)
+_sock(sock), _msg_finish(0), _status(TO_REGISTER), _hostname(),_nickname(), _username(), _oper(false)
 {
 	fcntl(sock, F_SETFL, O_NONBLOCK);
 	char hostname[NI_MAXHOST];
@@ -159,4 +159,35 @@ bool Client::getOper()
 void Client::setOper(bool oper)
 {
 	_oper = oper;
+}
+
+std::string Client::getOptions()
+{
+	std::string msg;
+
+	msg = "+ ";
+	msg += _options;
+	return (msg);
+}
+
+bool Client::IsOptionSet(std::string check, std::string option)
+{
+	if (check.find(option) != std::string::npos)
+			return (true);
+	return (false);
+}
+
+void Client::changeOptions(std::string options, bool add)
+{
+	if (add)
+	{
+		if (!IsOptionSet(_options, options))
+			_options += options;
+	}
+	else
+	{
+		if (IsOptionSet(_options, options))
+			_options.erase(_options.find(options));
+	}
+
 }

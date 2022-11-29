@@ -1,7 +1,7 @@
 #include "Command.hpp"
 
 Command::Command(std::map<int, Client *> *client_map, std::string password):
-	_clients_ptr(client_map), _password(password), _server_name("localhost"), _fatal_error(0), _correctPass(false), _oper_name("coco"), _oper_pass("toto")
+	_clients_ptr(client_map), _password(password), _correctPass(false), _server_name("localhost"), _oper_name("coco"), _oper_pass("toto"),_fatal_error(0) 
 {
 	_cmd_list.push_back("OPER");
 	_cmd_list.push_back("CAP");
@@ -11,6 +11,7 @@ Command::Command(std::map<int, Client *> *client_map, std::string password):
 	_cmd_list.push_back("JOIN");
 	_cmd_list.push_back("PRIVMSG");
 	_cmd_list.push_back("QUIT");
+	_cmd_list.push_back("MODE");
 	_cmd_availables["OPER"] = &Command::oper;
 	_cmd_availables["CAP"] = &Command::cap;
 	_cmd_availables["PASS"] = &Command::pass;
@@ -19,12 +20,14 @@ Command::Command(std::map<int, Client *> *client_map, std::string password):
 	_cmd_availables["JOIN"] = &Command::join;
 	_cmd_availables["PRIVMSG"] = &Command::privmsg;
 	_cmd_availables["QUIT"] = &Command::quit;
+	_cmd_availables["MODE"] = &Command::mode;
 }
 
 Command::~Command()
 {
 }
 
+//COMMANDS MAIN FUNCTIONS
 bool Command::check_if_valid_cmd(std::string cmd)
 {
 	for (std::vector<std::string>::iterator it1 = _cmd_list.begin(); it1 != _cmd_list.end(); ++it1)
@@ -63,22 +66,77 @@ void Command::readCmd(int client_socket)
 	_client_status = _client->getStatus();
 	if (_client->getStatus() == TO_REGISTER)
 	{
-		std::cout << "Command::readCmd TO_REGISTER" << std::endl;
+		if (DEBUG)
+			std::cout << "Command::readCmd TO_REGISTER" << std::endl;
 		execCmd();
 		(*_cmd).clear();
 		_client->setStatus(REGISTER);
 	}
 	else
 	{
-		std::cout << "Command::readCmd REGISTER" << std::endl;
+		if (DEBUG)
+			std::cout << "Command::readCmd REGISTER" << std::endl;
 		execCmd();
 		if ((*_cmd).size() > 0)
 			(*_cmd).clear();
 	}
 }
 
+// MODE
+void	Command::mode()
+{
+	if (DEBUG)
+		std::cout << "Command::mode" << std::endl;
+	if ((*_cmd)[_actual_cmd].size() <= 2)
+	{
+		sendToClient(461); //ERR_NEEDMOREPARAMS
+		return ;
+	}
+	if ((*_cmd)[_actual_cmd][1][0] == '#')
+	{
+		//Channel part
+	}
+	else
+	{
+		//User part
+		if (!checkNickname((*_cmd)[_actual_cmd][1]))
+		{
+			sendToClient(401); //ERR_NOSUCHNICK 
+			return ;
+		}
+		if ((*_cmd)[_actual_cmd][1] != (*_client).getNickname())
+		{
+			sendToClient(502); //ERR_USERSDONTMATCH 
+			return ;
+		}
+		if ((*_cmd)[_actual_cmd].size() == 3)
+		{
+			sendToClient(221); //RPL_UMODEIS 
+			return ;
+		}
+		if ((*_cmd)[_actual_cmd][4] == "-")
+		{
+			if ((*_cmd)[_actual_cmd].size() > 4 && (*_cmd)[_actual_cmd][5] == "o")
+			{
+				(*_client).setOper(false);
+				//pas sur d'envoyer la 221 ici peut etre pas une numeric replies juste
+				//mettre les modes avec MODE en nomb de commande?
+				sendToClient(221); //RPL_UMODEIS 
+			}
+		}
+		//faut rajouter une erreur si on nous envoie une option de mode qu'on gere pas
+		//mais on est quand meme sencer ajotuer celle qu'on connait
+		//et visiblement on peut recevoir en une commande plusieurs options genre + iw
+		//donc si on recoit + zzzzzzzzzziw faut ignorer les z rajouter iw et ensutie mettre l erreur pour les z???
+	}
+}
+
+
+// OPER
 void	Command::oper()
 {
+	if (DEBUG)
+		std::cout << "Command::oper" << std::endl;
 	if ((*_cmd)[_actual_cmd].size() != 3)
 	{
 		sendToClient(461); //ERR_NEEDMOREPARAMS
@@ -104,14 +162,18 @@ void	Command::oper()
 
 }
 
+// CAP
 void	Command::cap()
 {
-	std::cout << "Command::cap" << std::endl;
+	if (DEBUG)
+		std::cout << "Command::cap" << std::endl;
 }
 
+// PASS
 void	Command::pass()
 {
-	std::cout << "Command::pass | Pass attendu:" << _password << " | Pass recu = " << (*_cmd)[_actual_cmd][1] << std::endl;
+	if (DEBUG)
+		std::cout << "Command::pass | Pass attendu:" << _password << " | Pass recu = " << (*_cmd)[_actual_cmd][1] << std::endl;
 	if (_client->getStatus() != 0)
 	{
 		sendToClient(462); //ERR_ALREADYREGISTERED
@@ -129,22 +191,12 @@ void	Command::pass()
 	else
 	{
 		sendToClient(464); //ERR_PASSWDMISMATCH
-		fatalError("You SHOULD try to connect with the good password.");
+		fatalError("You SHOULD connect with the good password.");
 		return ;
 	}
-	//
-	/*
-	   if (client->isRegistered() == true)
-	   return ft_error(ERR_ALREADYREGISTERED, client, NULL, "");
-	   if (params.size() < 2)
-	   return (ft_error(ERR_NEEDMOREPARAMS, client, NULL, params[0]));
-	   if (client->getRegUser() == true || client->getRegNick() == true)
-	   return;
-	   client->setPassword(params[1]);
-	   client->setRegPass(true);
-	 */
 }
 
+// NICK
 int Command::parsingNickname(std::string nickname)
 {
 	//find renvoie npos si aucune occurence n'a été trouvée, sinon ça renvoie l'endroit ou l'occurence à été trouvée
@@ -164,9 +216,9 @@ int Command::checkNickname(std::string nickname)
 	for (std::map<int, Client *>::iterator it = (*_clients_ptr).begin() ; it != (*_clients_ptr).end() ; ++it)
 	{
 		if ((*it).second->getNickname() == nickname)
-			return (0);
+			return (1);
 	}
-	return (1);
+	return (0);
 
 }
 
@@ -186,7 +238,7 @@ void	Command::nick()
 		sendToClient(432); //ERR_ERRONEUSNICKNAME
 		return ;
 	}
-	else if (!checkNickname((*_cmd)[_actual_cmd][1]))
+	else if (checkNickname((*_cmd)[_actual_cmd][1]))
 	{
 		sendToClient(433); //ERR_NICKNAMEINUSE
 		return ;
@@ -199,16 +251,20 @@ void	Command::nick()
 	else
 	{
 		//probleme a faire getnickname alors que il y en a pas au debut?
-		std::cout << "old nick name = " << _client->getNickname() << std::endl;
+		if (DEBUG)
+			std::cout << "old nick name = " << _client->getNickname() << std::endl;
 		_client->setNickname((*_cmd)[_actual_cmd][1]);
-		std::cout << "new nick name = " << _client->getNickname() << std::endl;
+		if (DEBUG)
+			std::cout << "new nick name = " << _client->getNickname() << std::endl;
 		//avertir le client que la commande nick est successfull et avertir les autres clients du changement de nickname
 	}
-
 }
+
+// USER
 void	Command::user()
 {
-	std::cout << "Command::user" << std::endl;
+	if (DEBUG)
+		std::cout << "Command::user" << std::endl;
 	if (!_correctPass)
 	{
 		sendToClient(464); //ERR_PASSWDMISMATCH
@@ -228,9 +284,11 @@ void	Command::user()
 	}
 	else
 	{ 
-		std::cout << "_client->getUsername() = " << _client->getUsername() << "|" << std::endl;
+		if (DEBUG)
+			std::cout << "_client->getUsername() = " << _client->getUsername() << "|" << std::endl;
 		_client->setUsername((*_cmd)[_actual_cmd][1]);
-		std::cout << "_client->getUsername() = " << _client->getUsername() << "|"<< std::endl;
+		if (DEBUG)
+			std::cout << "_client->getUsername() = " << _client->getUsername() << "|"<< std::endl;
 	}
 	sendToClient(1);
 	sendToClient(2);
@@ -238,6 +296,7 @@ void	Command::user()
 	sendToClient(4);
 }
 
+// JOIN
 void	Command::join()
 {
 	//on parcoure tous les chans
@@ -258,6 +317,16 @@ void	Command::join()
 		add_channel(&new_chan);
 }
 
+// QUIT
+void	Command::quit()
+{
+	//faudra bien tout libérer ici
+	//fatal_error
+	_client->setStatus(REMOVE_ME);
+}
+
+
+// PRIVMSG
 void	Command::privmsg()
 {
 	if (DEBUG)
@@ -293,17 +362,12 @@ void	Command::privmsg()
 	sendToClient(401); //ERR_NOSUCHNICK (401)			
 }
 
-void	Command::quit()
-{
-	//faudra bien tout libérer ici
-	//fatal_error
-	_client->setStatus(REMOVE_ME);
-}
-
-//privmsg
+// SEND TO
+// PRIVMSG TARGET
 void Command::sendToTarget(std::string target_name, int target_socket)
 {
-	std::cout << "target name puis target socket " << target_name << " "<< target_socket << std::endl;
+	if (DEBUG)
+		std::cout << "target name puis target socket " << target_name << " "<< target_socket << std::endl;
 	std::string msg;
 	msg = ":" + _client->getNickname() + " PRIVMSG " + target_name + " " ;
 
@@ -314,14 +378,17 @@ void Command::sendToTarget(std::string target_name, int target_socket)
 		msg += *it2;
 	}
 	msg += "\r\n";
-	std::cout << "MSG ="<< msg << std::endl;
+	if (DEBUG)
+		std::cout << "MSG ="<< msg << std::endl;
 	send(target_socket, msg.c_str(), msg.size(), 0);
 }
 
+// PRIVMSG CHANNEL
 void Command::sendToChannel()
 {
 }
 
+//NUMERIC REPLIES
 void Command::sendToClient(int numeric_replies)
 {
 	std::string msg;
@@ -357,6 +424,11 @@ void Command::sendToClient(int numeric_replies)
 				msg += "Sorry IRC_90's capacity is full. Please retry connection later\r\n";
 				break;
 			}
+		case 221: //RPL_UMODEIS
+		{
+			msg += _client->getUsername() + _client->getOptions() + "\r\n";	
+			break ;
+		}
 		case 381: //RPL_YOUREOPER
 			{
 				msg += _client->getUsername() + " :You are now an IRC operator\r\n";
@@ -459,7 +531,8 @@ void Command::sendToClient(int numeric_replies)
 			}
 
 	}
-	std::cout << msg << std::endl;
+	if (DEBUG)
+		std::cout << msg << std::endl;
 	send(_client_socket, msg.c_str(), msg.size(), 0);
 }
 
@@ -479,13 +552,13 @@ std::string Command::insert_zeros(int nbr)
 	return(tmp);
 }
 
-
-
+// ERROR
 void Command::fatalError(std::string msg_error)
 {
 	std::string msg;
 	msg = ":" + _client->getNickname() + " " + "ERROR" + " :" +msg_error + "\r\n";
-	std::cout << msg << std::endl;
+	if (DEBUG)
+		std::cout << msg << std::endl;
 
 	send(_client_socket, msg.c_str(), msg.size(), 0);
 	_fatal_error = true;

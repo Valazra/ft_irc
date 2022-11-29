@@ -10,6 +10,7 @@
 # include <errno.h>
 # include <fcntl.h>
 # include <vector>
+# include <string>
 
 enum userStatus
 {
@@ -48,6 +49,9 @@ class Client
 		std::string getHostname();
 		std::string getNickname();
 		std::string getUsername();
+		std::string getOptions();
+		bool IsOptionSet(std::string check, std::string option);
+		void changeOptions(std::string options, bool add);
 		void setNickname(std::string nickname);
 		void setUsername(std::string username);
 
@@ -58,6 +62,7 @@ class Client
 		Client(Client const &src);
 		Client &operator=(Client const & src);
 
+		std::string _options;
 		int		_sock;
 		bool		_msg_finish;
 		userStatus	_status;
