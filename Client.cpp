@@ -51,7 +51,7 @@ void Client::receive()
 		_msg_finish = 0;
 	if (DEBUG)
 	
-	std::cout << "THIS CLIENT SOCK RECEIVE:" << _sock << " MESSAGE BRUT: |" << _msg  << "|" << std::endl;
+	std::cout << "THIS CLIENT SOCK RECEIVE:" << _sock << " MESSAGE BRUT :" << _msg  << std::endl;
 }
 
 void Client::splitCommand()

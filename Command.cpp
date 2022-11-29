@@ -3,6 +3,7 @@
 Command::Command(std::map<int, Client *> *client_map, std::string password):
 	_clients_ptr(client_map), _password(password), _correctPass(false), _server_name("localhost"), _oper_name("coco"), _oper_pass("toto"),_fatal_error(0) 
 {
+	_cmd_list.push_back("MODE");
 	_cmd_list.push_back("OPER");
 	_cmd_list.push_back("CAP");
 	_cmd_list.push_back("PASS");
@@ -11,7 +12,7 @@ Command::Command(std::map<int, Client *> *client_map, std::string password):
 	_cmd_list.push_back("JOIN");
 	_cmd_list.push_back("PRIVMSG");
 	_cmd_list.push_back("QUIT");
-	_cmd_list.push_back("MODE");
+	_cmd_availables["MODE"] = &Command::mode;
 	_cmd_availables["OPER"] = &Command::oper;
 	_cmd_availables["CAP"] = &Command::cap;
 	_cmd_availables["PASS"] = &Command::pass;
@@ -20,7 +21,6 @@ Command::Command(std::map<int, Client *> *client_map, std::string password):
 	_cmd_availables["JOIN"] = &Command::join;
 	_cmd_availables["PRIVMSG"] = &Command::privmsg;
 	_cmd_availables["QUIT"] = &Command::quit;
-	_cmd_availables["MODE"] = &Command::mode;
 }
 
 Command::~Command()
@@ -44,7 +44,7 @@ void Command::execCmd()
 	{
 		if ((it->empty()))
 			return ;
-		std::cout << it->front() << std::endl;
+		std::cout << "execCmd() de la commande : " << it->front() << std::endl;
 		// la commande est pas une qu on gere voir ce qu on fait au lieu de return ;
 		if (!check_if_valid_cmd(it->front()))
 			return ;
@@ -225,14 +225,6 @@ int Command::checkNickname(std::string nickname)
 void	Command::nick()
 {
 	std::cout << "Command::nick" << std::endl;
-	/*
-	   Nicknames are non-empty strings with the following restrictions:
-
-	   They MUST NOT contain any of the following characters: space (' ', 0x20), comma (',', 0x2C), asterisk ('*', 0x2A), question mark ('?', 0x3F), exclamation mark ('!', 0x21), at sign ('@', 0x40).
-	   They MUST NOT start with any of the following characters: dollar ('$', 0x24), colon (':', 0x3A).
-	   They MUST NOT start with a character listed as a channel type prefix.
-	   They SHOULD NOT contain any dot character ('.', 0x2E).
-	 */
 	if (!parsingNickname((*_cmd)[_actual_cmd][1]))
 	{
 		sendToClient(432); //ERR_ERRONEUSNICKNAME

@@ -54,9 +54,9 @@ class Client
 		void changeOptions(std::string options, bool add);
 		void setNickname(std::string nickname);
 		void setUsername(std::string username);
-
 		bool getOper();
 		void setOper(bool oper);
+
 	private:
 		Client();
 		Client(Client const &src);
