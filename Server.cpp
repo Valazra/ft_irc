@@ -161,6 +161,8 @@ void Server::check_new_client()
 	if (new_client_sock == -1)
 		throw Server::ErrnoEx();
 	// et donc la ils creent le nouveau client qu'ils rajoutent a la map de clients
+	if (DEBUG)
+		std::cout << new_client_sock << std::endl;
 	_clients[new_client_sock] =   new Client(new_client_sock, addr);
 	/*
 	// Si y'a pas de mdp on enregistre le client 

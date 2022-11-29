@@ -3,6 +3,14 @@
 Command::Command(std::map<int, Client *> *client_map, std::string password):
 	_clients_ptr(client_map), _password(password), _server_name("localhost"), _fatal_error(0), _correctPass(false)
 {
+	_cmd_list.push_back("OPER");
+	_cmd_list.push_back("CAP");
+	_cmd_list.push_back("PASS");
+	_cmd_list.push_back("NICK");
+	_cmd_list.push_back("USER");
+	_cmd_list.push_back("JOIN");
+	_cmd_list.push_back("PRIVMSG");
+	_cmd_list.push_back("QUIT");
 	_cmd_availables["OPER"] = &Command::oper;
 	_cmd_availables["CAP"] = &Command::cap;
 	_cmd_availables["PASS"] = &Command::pass;
@@ -17,6 +25,16 @@ Command::~Command()
 {
 }
 
+bool Command::check_if_valid_cmd(std::string cmd)
+{
+	for (std::vector<std::string>::iterator it1 = _cmd_list.begin(); it1 != _cmd_list.end(); ++it1)
+	{
+		if (*it1 == cmd)
+			return (true);
+	}
+	return (false);
+}
+
 void Command::execCmd()
 {
 	for (std::vector<std::vector<std::string> >::iterator it = (*_cmd).begin(); it != (*_cmd).end(); ++it)
@@ -24,6 +42,9 @@ void Command::execCmd()
 		if ((it->empty()))
 			return ;
 		std::cout << it->front() << std::endl;
+		// la commande est pas une qu on gere voir ce qu on fait au lieu de return ;
+		if (!check_if_valid_cmd(it->front()))
+			return ;
 		(this->*_cmd_availables[it->front()])();
 		if (_fatal_error)
 			return ;
@@ -49,10 +70,9 @@ void Command::readCmd(int client_socket)
 	}
 	else
 	{
-		/*
 		std::cout << "Command::readCmd REGISTER" << std::endl;
+		std::cout << (*_cmd)[0][0] << std::endl;
 		execCmd();
-		*/
 		if ((*_cmd).size() > 0)
 			(*_cmd).clear();
 	}
@@ -232,19 +252,23 @@ void	Command::join()
 
 void	Command::privmsg()
 {
+	if (DEBUG)
+		std::cout << "Command::privmsg" << std::endl;
 	if ((*_cmd)[_actual_cmd].size() < 3)
 	{
 		sendToClient(461); //ERR_NEEDMOREPARAMS
 		return ;
 	}
+	std::string target_name = (*_cmd)[_actual_cmd][1];
 	//on parcoure tous les clients	
 	for (std::map<int, Client *>::iterator it = (*_clients_ptr).begin() ; it != (*_clients_ptr).end() ; ++it)
 	{
 		//si la target correspond à un client
-		if ((*it).second->getNickname() == (*_cmd)[_actual_cmd][1]) 
+		if ((*it).second->getNickname() == target_name) 
 		{
+
 			//alors on sendToTarget et on return
-			sendToTarget();
+			sendToTarget(target_name, (*it).first);
 			return ;
 		}
 	}
@@ -252,7 +276,7 @@ void	Command::privmsg()
 	for(std::vector<Channel *>::iterator it = _client->getAllChannels().begin() ; it != _client->getAllChannels().end() ; ++it)
 	{
 		//si la target correspond à un channel
-		if ((*it)->getName() == (*_cmd)[_actual_cmd][1])
+		if ((*it)->getName() == target_name)
 		{
 			sendToChannel();
 			return ;
@@ -269,24 +293,20 @@ void	Command::quit()
 }
 
 //privmsg
-void Command::sendToTarget()
+void Command::sendToTarget(std::string target_name, int target_socket)
 {
+		std::cout << "target name puis target socket " << target_name << " "<< target_socket << std::endl;
 	std::string msg;
+	msg = ":" + _client->getNickname() + " PRIVMSG " + target_name + " " ;
 
-//a changer
-	msg = ": msg privé : " ;
-	for (std::map<int, Client *>::iterator it = (*_clients_ptr).begin() ; it != (*_clients_ptr).end() ; ++it)
+	for(std::vector<std::string>::iterator it2 = (*_cmd)[_actual_cmd].begin() + 2 ; it2 != (*_cmd)[_actual_cmd].end() ; ++it2)
 	{
-		if ((*it).second->getNickname() == (*_cmd)[_actual_cmd][1])
-		{
-			for(std::vector<std::string>::iterator it2 = (*_cmd)[_actual_cmd].begin() + 2 ; it2 != (*_cmd)[_actual_cmd].end() ; ++it2)
-			{
-				//a changer pour les espaces et tout
-				msg += *it2;
-			}
-			send((*it).second->getSock(), msg.c_str(), msg.size(), 0);
-		}
+		if (it2 != (*_cmd)[_actual_cmd].begin() + 2)
+			msg += " ";
+		msg += *it2;
 	}
+	std::cout << "MSG ="<< msg << std::endl;
+	send(target_socket, msg.c_str(), msg.size(), 0);
 }
 
 void Command::sendToChannel()
@@ -297,40 +317,35 @@ void Command::sendToClient(int numeric_replies)
 {
 	std::string msg;
 
-	if (numeric_replies)
+	if (numeric_replies >= 1 && numeric_replies <= 5)
 		msg = ":" + _server_name + " " + insert_zeros(numeric_replies) + to_string(numeric_replies) + " " + _client->getNickname() + " :";
-//	else if ()
-//		msg = "si besoin";
+	else
+		msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " " + insert_zeros(numeric_replies) + to_string(numeric_replies) + " :";
 	switch (numeric_replies)
 	{
 		case 1: //RPL_WELCOME
 		{			
 				msg += "Welcome to the Internet Relay Network " + _client->getNickname() + "\r\n";
-				std::cout << msg << std::endl;
 				break;
 		}
 		case 2:
 		{
 			msg += "Your host is " + _server_name + ", running on version [42.42]\r\n";
-				std::cout << msg << std::endl;
 			break;
 		}
 		case 3:
 		{
 			msg += "This server was created 15h30 fdp\r\n";
-				std::cout << msg << std::endl;
 			break;
 		}
 		case 4:
 		{
 			msg += _server_name + " version [42.42]. Available user MODE : +Oa . Avalaible channel MODE : none. \r\n";
-				std::cout << msg << std::endl;
 			break;
 		}
 		case 5:
 		{
 			msg += "Sorry IRC_90's capacity is full. Please retry connection later\r\n";
-			std::cout << msg << std::endl;
 			break;
 		}
 		case 401: //ERR_NOSUCHNICK
@@ -381,7 +396,6 @@ void Command::sendToClient(int numeric_replies)
 		case 461: //ERR_NEEDMOREPARAMS
 		{
 			msg += _client->getUsername() + " " + (*_cmd)[_actual_cmd][0] + " :Not enough parameters\r\n";
-			std::cout << msg << std::endl;
 			break;
 		}
 		case 462: //ERR_ALREADYREGISTERED
@@ -431,6 +445,7 @@ void Command::sendToClient(int numeric_replies)
 		}
 		
 	}
+	std::cout << msg << std::endl;
 	send(_client_socket, msg.c_str(), msg.size(), 0);
 }
 

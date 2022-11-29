@@ -8,7 +8,9 @@
 #include <ostream>
 #include <iostream>
 #include <vector>
+# define DEBUG 1
 
+class Server;
 class Command
 {
 	public:
@@ -18,11 +20,12 @@ class Command
 		void execCmd();
 		void splitCommand(std::string msg);
 		void sendToClient(int numeric_replies);
-		void sendToTarget();
+		void sendToTarget(std::string target_name, int target_socket);
 		void sendToChannel();
 		void fatalError(std::string msg_error);
 		int parsingNickname(std::string nickname);
 		int checkNickname(std::string nickname);
+		bool check_if_valid_cmd(std::string cmd);
 
 	private:
 		Command();
@@ -46,6 +49,7 @@ class Command
 		userStatus _client_status;
 		int	_actual_cmd;
 		std::map<std::string, void(Command::*)()> _cmd_availables;
+		std::vector<std::string> _cmd_list;
 		std::string _password;
 		std::string _server_name;
 		bool _fatal_error;
