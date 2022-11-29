@@ -99,6 +99,10 @@ Client::~Client()
 	close(_sock);
 }
 
+int Client::getSock()
+{
+	return (_sock);
+}
 
 userStatus Client::getStatus()
 {

@@ -44,6 +44,7 @@ class Client
 		std::vector<std::vector<std::string> > * getCmd();
 		
 		void splitCommand();
+		int getSock();
 		bool getMsgFinish();
 		std::string getHostname();
 		std::string getNickname();

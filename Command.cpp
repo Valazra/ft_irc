@@ -232,13 +232,33 @@ void	Command::join()
 
 void	Command::privmsg()
 {
-	//si target est un channel
-		//envoie le msg au chan
-	//si target est le nickname d'un user
-		//envoie le msg a l'user
-	// sinon
-		//ERR_NOSUCHNICK (401)
-			
+	if ((*_cmd)[_actual_cmd].size() < 3)
+	{
+		sendToClient(461); //ERR_NEEDMOREPARAMS
+		return ;
+	}
+	//on parcoure tous les clients	
+	for (std::map<int, Client *>::iterator it = (*_clients_ptr).begin() ; it != (*_clients_ptr).end() ; ++it)
+	{
+		//si la target correspond à un client
+		if ((*it).second->getNickname() == (*_cmd)[_actual_cmd][1]) 
+		{
+			//alors on sendToTarget et on return
+			sendToTarget();
+			return ;
+		}
+	}
+	//on parcoure tous les channels
+	for(std::vector<Channel *>::iterator it = _client->getAllChannels().begin() ; it != _client->getAllChannels().end() ; ++it)
+	{
+		//si la target correspond à un channel
+		if ((*it)->getName() == (*_cmd)[_actual_cmd][1])
+		{
+			sendToChannel();
+			return ;
+		}
+	}
+	sendToClient(401); //ERR_NOSUCHNICK (401)			
 }
 
 void	Command::quit()
@@ -246,6 +266,31 @@ void	Command::quit()
 //faudra bien tout libérer ici
 //fatal_error
 	_client->setStatus(REMOVE_ME);
+}
+
+//privmsg
+void Command::sendToTarget()
+{
+	std::string msg;
+
+//a changer
+	msg = ": msg privé : " ;
+	for (std::map<int, Client *>::iterator it = (*_clients_ptr).begin() ; it != (*_clients_ptr).end() ; ++it)
+	{
+		if ((*it).second->getNickname() == (*_cmd)[_actual_cmd][1])
+		{
+			for(std::vector<std::string>::iterator it2 = (*_cmd)[_actual_cmd].begin() + 2 ; it2 != (*_cmd)[_actual_cmd].end() ; ++it2)
+			{
+				//a changer pour les espaces et tout
+				msg += *it2;
+			}
+			send((*it).second->getSock(), msg.c_str(), msg.size(), 0);
+		}
+	}
+}
+
+void Command::sendToChannel()
+{
 }
 
 void Command::sendToClient(int numeric_replies)
@@ -287,11 +332,26 @@ void Command::sendToClient(int numeric_replies)
 			msg += "Sorry IRC_90's capacity is full. Please retry connection later\r\n";
 			std::cout << msg << std::endl;
 			break;
-		}	
+		}
+		case 401: //ERR_NOSUCHNICK
+		{
+			msg += _client->getUsername() + " " + _client->getNickname() + " :No such nick/channel\r\n";
+			break;
+		}
+		case 402: //ERR_NOSERVER
+		{
+			msg += _client->getUsername() + " " + _server_name + " :No such server\r\n";
+			break;
+		}
 		case 403: //ERR_NOSUCHCHANNEL
 		{
 				msg += _client->getUsername() + " " + _client->getActualChannel()->getName() + " :No such channel\r\n";	
 				break;
+		}
+		case 404: //ERR_CANNOTSENDTOCHAN
+		{
+			msg += _client->getUsername() + " " + _client->getActualChannel()->getName() + " :Cannot send to channel\r\n";
+			break;
 		}
 		case 405: //ERR_TOOMANYCHANNELS
 		{
@@ -391,7 +451,6 @@ std::string Command::insert_zeros(int nbr)
 }
 
 
-//send to target (message privé)
 
 void Command::fatalError(std::string msg_error)
 {

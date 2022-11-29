@@ -18,6 +18,8 @@ class Command
 		void execCmd();
 		void splitCommand(std::string msg);
 		void sendToClient(int numeric_replies);
+		void sendToTarget();
+		void sendToChannel();
 		void fatalError(std::string msg_error);
 		int parsingNickname(std::string nickname);
 		int checkNickname(std::string nickname);
