@@ -155,3 +155,8 @@ bool Client::getOper()
 {
 	return (_oper);
 }
+
+void Client::setOper(bool oper)
+{
+	_oper = oper;
+}

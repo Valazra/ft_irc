@@ -1,7 +1,7 @@
 #include "Command.hpp"
 
 Command::Command(std::map<int, Client *> *client_map, std::string password):
-	_clients_ptr(client_map), _password(password), _server_name("localhost"), _fatal_error(0), _correctPass(false)
+	_clients_ptr(client_map), _password(password), _server_name("localhost"), _fatal_error(0), _correctPass(false), _oper_name("coco"), _oper_pass("toto")
 {
 	_cmd_list.push_back("OPER");
 	_cmd_list.push_back("CAP");
@@ -71,7 +71,6 @@ void Command::readCmd(int client_socket)
 	else
 	{
 		std::cout << "Command::readCmd REGISTER" << std::endl;
-		std::cout << (*_cmd)[0][0] << std::endl;
 		execCmd();
 		if ((*_cmd).size() > 0)
 			(*_cmd).clear();
@@ -80,19 +79,28 @@ void Command::readCmd(int client_socket)
 
 void	Command::oper()
 {
-//	if (_client->getOper() == false)
-//	{
-		if ((*_cmd)[_actual_cmd].size() != 3)
-		{
-			sendToClient(461); //ERR_NEEDMOREPARAMS
-			return ;
-		}
-		else if (_client->getStatus() != REGISTER)
-		{
-			sendToClient(491); //ERR_NOOPERHOST
-			return ;
-		}
-//	}
+	if ((*_cmd)[_actual_cmd].size() != 3)
+	{
+		sendToClient(461); //ERR_NEEDMOREPARAMS
+		return ;
+	}
+	else if (_client->getStatus() != REGISTER)
+	{
+		sendToClient(491); //ERR_NOOPERHOST
+		return ;
+	}
+	if ((*_cmd)[_actual_cmd][1] == _oper_name && (*_cmd)[_actual_cmd][2] == _oper_pass)
+	{
+		_client->setOper(true);
+		sendToClient(381);
+		//mettre aussi un message de MODE (RPL_UMODEIS)
+		return ;
+	}
+	else
+	{
+		sendToClient(464);//ERR_PASSWDMISMATCH
+		return ;
+	}
 
 }
 
@@ -139,7 +147,7 @@ void	Command::pass()
 
 int Command::parsingNickname(std::string nickname)
 {
-//find renvoie npos si aucune occurence n'a été trouvée, sinon ça renvoie l'endroit ou l'occurence à été trouvée
+	//find renvoie npos si aucune occurence n'a été trouvée, sinon ça renvoie l'endroit ou l'occurence à été trouvée
 	std::string forbidden(" ,*?!@.");
 	if (nickname[0] == '$' || nickname[0] == ':' || forbidden.find(nickname[0], 0) != std::string::npos)
 		return (0);
@@ -166,13 +174,13 @@ void	Command::nick()
 {
 	std::cout << "Command::nick" << std::endl;
 	/*
-	Nicknames are non-empty strings with the following restrictions:
+	   Nicknames are non-empty strings with the following restrictions:
 
-    They MUST NOT contain any of the following characters: space (' ', 0x20), comma (',', 0x2C), asterisk ('*', 0x2A), question mark ('?', 0x3F), exclamation mark ('!', 0x21), at sign ('@', 0x40).
-    They MUST NOT start with any of the following characters: dollar ('$', 0x24), colon (':', 0x3A).
-    They MUST NOT start with a character listed as a channel type prefix.
-    They SHOULD NOT contain any dot character ('.', 0x2E).
-	*/
+	   They MUST NOT contain any of the following characters: space (' ', 0x20), comma (',', 0x2C), asterisk ('*', 0x2A), question mark ('?', 0x3F), exclamation mark ('!', 0x21), at sign ('@', 0x40).
+	   They MUST NOT start with any of the following characters: dollar ('$', 0x24), colon (':', 0x3A).
+	   They MUST NOT start with a character listed as a channel type prefix.
+	   They SHOULD NOT contain any dot character ('.', 0x2E).
+	 */
 	if (!parsingNickname((*_cmd)[_actual_cmd][1]))
 	{
 		sendToClient(432); //ERR_ERRONEUSNICKNAME
@@ -232,7 +240,7 @@ void	Command::user()
 
 void	Command::join()
 {
-//on parcoure tous les chans
+	//on parcoure tous les chans
 	for (std::vector<Channel *>::iterator it = getAllChannels().begin() ; it != getAllChannels().end() ; ++it)
 	{
 		//si le chan existe déjà
@@ -287,15 +295,15 @@ void	Command::privmsg()
 
 void	Command::quit()
 {
-//faudra bien tout libérer ici
-//fatal_error
+	//faudra bien tout libérer ici
+	//fatal_error
 	_client->setStatus(REMOVE_ME);
 }
 
 //privmsg
 void Command::sendToTarget(std::string target_name, int target_socket)
 {
-		std::cout << "target name puis target socket " << target_name << " "<< target_socket << std::endl;
+	std::cout << "target name puis target socket " << target_name << " "<< target_socket << std::endl;
 	std::string msg;
 	msg = ":" + _client->getNickname() + " PRIVMSG " + target_name + " " ;
 
@@ -325,126 +333,131 @@ void Command::sendToClient(int numeric_replies)
 	switch (numeric_replies)
 	{
 		case 1: //RPL_WELCOME
-		{			
+			{			
 				msg += "Welcome to the Internet Relay Network " + _client->getNickname() + "\r\n";
 				break;
-		}
+			}
 		case 2:
-		{
-			msg += "Your host is " + _server_name + ", running on version [42.42]\r\n";
-			break;
-		}
+			{
+				msg += "Your host is " + _server_name + ", running on version [42.42]\r\n";
+				break;
+			}
 		case 3:
-		{
-			msg += "This server was created 15h30 fdp\r\n";
-			break;
-		}
+			{
+				msg += "This server was created 15h30 fdp\r\n";
+				break;
+			}
 		case 4:
-		{
-			msg += _server_name + " version [42.42]. Available user MODE : +Oa . Avalaible channel MODE : none. \r\n";
-			break;
-		}
+			{
+				msg += _server_name + " version [42.42]. Available user MODE : +Oa . Avalaible channel MODE : none. \r\n";
+				break;
+			}
 		case 5:
-		{
-			msg += "Sorry IRC_90's capacity is full. Please retry connection later\r\n";
-			break;
-		}
+			{
+				msg += "Sorry IRC_90's capacity is full. Please retry connection later\r\n";
+				break;
+			}
+		case 381: //RPL_YOUREOPER
+			{
+				msg += _client->getUsername() + " :You are now an IRC operator\r\n";
+				break;
+			}
 		case 401: //ERR_NOSUCHNICK
-		{
-			msg += _client->getUsername() + " " + _client->getNickname() + " :No such nick/channel\r\n";
-			break;
-		}
+			{
+				msg += _client->getUsername() + " " + _client->getNickname() + " :No such nick/channel\r\n";
+				break;
+			}
 		case 402: //ERR_NOSERVER
-		{
-			msg += _client->getUsername() + " " + _server_name + " :No such server\r\n";
-			break;
-		}
+			{
+				msg += _client->getUsername() + " " + _server_name + " :No such server\r\n";
+				break;
+			}
 		case 403: //ERR_NOSUCHCHANNEL
-		{
+			{
 				msg += _client->getUsername() + " " + getActualChannel()->getName() + " :No such channel\r\n";	
 				break;
-		}
+			}
 		case 404: //ERR_CANNOTSENDTOCHAN
-		{
-			msg += _client->getUsername() + " " + getActualChannel()->getName() + " :Cannot send to channel\r\n";
-			break;
-		}
-		case 405: //ERR_TOOMANYCHANNELS
-		{
-			msg += _client->getUsername() + " " + getActualChannel()->getName() + " :You have  joined too many channels\r\n";
+			{
+				msg += _client->getUsername() + " " + getActualChannel()->getName() + " :Cannot send to channel\r\n";
 				break;
-		}
+			}
+		case 405: //ERR_TOOMANYCHANNELS
+			{
+				msg += _client->getUsername() + " " + getActualChannel()->getName() + " :You have  joined too many channels\r\n";
+				break;
+			}
 		case 431: //ERR_NONICKNAMEGIVEN
-		{
-			msg += " :No nickname given\r\n";	
-			break;
-		}
+			{
+				msg += " :No nickname given\r\n";	
+				break;
+			}
 		case 432: //ERR_ERRONEUSNICKNAME
-		{
-			msg += _client->getUsername() + " " + _client->getNickname() + " :Erroneus nickname\r\n";	
-			break;
-		}
+			{
+				msg += _client->getUsername() + " " + _client->getNickname() + " :Erroneus nickname\r\n";	
+				break;
+			}
 		case 433: //ERR_NICKNAMEINUSE
-		{
-			msg += _client->getUsername() + " " +  _client->getNickname() + " :Nickname is already in use\r\n";	
-			break;
-		}
+			{
+				msg += _client->getUsername() + " " +  _client->getNickname() + " :Nickname is already in use\r\n";	
+				break;
+			}
 		case 436: //ERR_NICKCOLLISION
-		{
-			msg += _client->getNickname() + " :Nickname collision KILL from " + _client->getUsername() + "@" + _client->getHostname() + "\r\n";	
-			break;
-		}
+			{
+				msg += _client->getNickname() + " :Nickname collision KILL from " + _client->getUsername() + "@" + _client->getHostname() + "\r\n";	
+				break;
+			}
 		case 461: //ERR_NEEDMOREPARAMS
-		{
-			msg += _client->getUsername() + " " + (*_cmd)[_actual_cmd][0] + " :Not enough parameters\r\n";
-			break;
-		}
+			{
+				msg += _client->getUsername() + " " + (*_cmd)[_actual_cmd][0] + " :Not enough parameters\r\n";
+				break;
+			}
 		case 462: //ERR_ALREADYREGISTERED
-		{
-			msg += _client->getUsername() + " :You may not reregister\r\n";	
-			break;
-		}
+			{
+				msg += _client->getUsername() + " :You may not reregister\r\n";	
+				break;
+			}
 		case 464: //ERR_PASSWDMISMATCH
-		{
-			msg += _client->getUsername() + " :Password incorrect\r\n";	
-			break;
-		}
+			{
+				msg += _client->getUsername() + " :Password incorrect\r\n";	
+				break;
+			}
 		case 471: //ERR_CHANNELISFULL
-		{
-			msg += _client->getUsername() + " " + getActualChannel()->getName() + " :Cannot join channel (+1)\r\n";	
-			break;
-		}
+			{
+				msg += _client->getUsername() + " " + getActualChannel()->getName() + " :Cannot join channel (+1)\r\n";	
+				break;
+			}
 		case 473: //ERR_INVITEONLYCHAN
-		{
-			msg += _client->getUsername() + " " + getActualChannel()->getName() + " :Cannot join channel (+i)\r\n";	
-			break;
-		}
+			{
+				msg += _client->getUsername() + " " + getActualChannel()->getName() + " :Cannot join channel (+i)\r\n";	
+				break;
+			}
 		case 474: //ERR_BANNEDFROMCHAN
-		{
-			msg += _client->getUsername() + " " + getActualChannel()->getName() + " :Cannot join channel (+b)\r\n";	
-			break;
-		}
+			{
+				msg += _client->getUsername() + " " + getActualChannel()->getName() + " :Cannot join channel (+b)\r\n";	
+				break;
+			}
 		case 475: //ERR_BADCHANNELKEY
-		{
-			msg += _client->getUsername() + " " + getActualChannel()->getName() + " :Cannot join channel (+k)\r\n";	
-			break;
-		}
+			{
+				msg += _client->getUsername() + " " + getActualChannel()->getName() + " :Cannot join channel (+k)\r\n";	
+				break;
+			}
 		case 476: //ERR_BADCHANMASK
-		{
-			msg += getActualChannel()->getName() + " :Bad Channel Mask\r\n";	
-			break;
-		}
+			{
+				msg += getActualChannel()->getName() + " :Bad Channel Mask\r\n";	
+				break;
+			}
 		case 491: //ERR_NOOPERHOST
-		{
-			msg += _client->getUsername() + " :No O-lines for your host\r\n";	
-			break;
-		}
+			{
+				msg += _client->getUsername() + " :No O-lines for your host\r\n";	
+				break;
+			}
 		default :
-		{
-			 msg = "gros fdp\r\n";
-			 break ;
-		}
-		
+			{
+				msg = "ON EST DANS LE DEFAULT DE SENDTOCLIENT\r\n";
+				break ;
+			}
+
 	}
 	std::cout << msg << std::endl;
 	send(_client_socket, msg.c_str(), msg.size(), 0);
@@ -502,7 +515,7 @@ void Command::leave_channel(Channel *channel)
 		{
 			if ((*it) == channel)
 			{
-			//il faut suppr le chan de la liste de tous les chans
+				//il faut suppr le chan de la liste de tous les chans
 				//(*it).erase();
 				_actual_channel = NULL;
 			}

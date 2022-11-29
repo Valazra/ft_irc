@@ -52,7 +52,7 @@ class Client
 		void setUsername(std::string username);
 
 		bool getOper();
-
+		void setOper(bool oper);
 	private:
 		Client();
 		Client(Client const &src);

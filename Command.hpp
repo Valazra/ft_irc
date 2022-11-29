@@ -63,6 +63,8 @@ class Command
 		bool _correctPass;
 		Channel *_actual_channel;
 		std::vector<Channel *> _all_channels;
+		std::string	_oper_name;
+		std::string	_oper_pass;
 };
 
 #endif
