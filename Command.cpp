@@ -291,7 +291,11 @@ void	Command::user()
 // JOIN
 void	Command::join()
 {
-
+	if ((*_cmd)[_actual_cmd].size() == 1)
+	{
+		sendToClient(461); //ERR_NEEDMOREPARAMS
+		return ;
+	}
 	//on parcoure tous les chans
 	for (std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
 	{
@@ -307,9 +311,12 @@ void	Command::join()
 			std::vector<Client *> listClientsChan = (*it)->getListClients();
 			for (std::vector<Client *>::iterator it2 = listClientsChan.begin() ; it2 != listClientsChan.end() ; ++it2)
 			{
-				//on envoie le message aux autres clients du chan
+				/*on envoie le message aux autres clients du chan
 				if ((*it2) != _client)
-					send((*it2)->getSock(), msg.c_str(), msg.size(), 0);
+					send((*it2)->getSock(), msg.c_str(), msg.size(), 0); 
+				*/
+				//on envoie le message à tous les clients du chan (meme nous)
+				send((*it2)->getSock(), msg.c_str(), msg.size(), 0); 
 			}
 			return ;
 		}
