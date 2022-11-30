@@ -51,7 +51,8 @@ void Client::receive()
 		_msg_finish = 0;
 	if (DEBUG)
 	
-	std::cout << "THIS CLIENT SOCK RECEIVE:" << _sock << " MESSAGE BRUT :" << _msg  << std::endl;
+	std::cout << "THIS CLIENT SOCK RECEIVE : " << _sock << std::endl;
+	std::cout << "MESSAGE BRUT : " << _msg  << std::endl;
 }
 
 void Client::splitCommand()
@@ -192,13 +193,13 @@ void Client::changeOptions(std::string options, bool add)
 
 }
 
-void Client::add_channel(Channel *channel)
+void Client::addChannel(Channel *channel)
 {
 	std::cout << "CLIENT ADD_CHANNEL" << std::endl;
 	_client_channels.push_back(channel);
 }
 
-void Client::leave_channel(Channel *channel)
+void Client::leaveChannel(Channel *channel)
 {
 	std::cout  << "CLIENT LEAVE_CHANNEL" << std::endl;
 	for (std::vector<Channel *>::iterator it = _client_channels.begin() ; it != _client_channels.end() ; ++it)

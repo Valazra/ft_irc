@@ -277,10 +277,10 @@ void	Command::user()
 	else
 	{ 
 		if (DEBUG)
-			std::cout << "_client->getUsername() = " << _client->getUsername() << "|" << std::endl;
+			std::cout << "_client->getUsername() = " << _client->getUsername() << std::endl;
 		_client->setUsername((*_cmd)[_actual_cmd][1]);
 		if (DEBUG)
-			std::cout << "_client->getUsername() = " << _client->getUsername() << "|"<< std::endl;
+			std::cout << "_client->getUsername() = " << _client->getUsername() << std::endl;
 	}
 	sendToClient(1);
 	sendToClient(2);
@@ -291,6 +291,7 @@ void	Command::user()
 // JOIN
 void	Command::join()
 {
+
 	//on parcoure tous les chans
 	for (std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
 	{
@@ -298,33 +299,44 @@ void	Command::join()
 		if ((*it)->getName() == (*_cmd)[_actual_cmd][1])
 		{
 			//on ajoute le chan au client et le client au chan et on quitte la commande
-			_client->add_channel(*it);
+			_client->addChannel(*it);
 			(*it)->addClient(_client); 
+			//on crée le msg de client qui join le chan
+			std::string msg;
+			msg = ":" + _client->getNickname() + " JOIN " + (*it)->getName() + "\r\n";
+			std::vector<Client *> listClientsChan = (*it)->getListClients();
+			for (std::vector<Client *>::iterator it2 = listClientsChan.begin() ; it2 != listClientsChan.end() ; ++it2)
+			{
+				//on envoie le message aux autres clients du chan
+				if ((*it2) != _client)
+					send((*it2)->getSock(), msg.c_str(), msg.size(), 0);
+			}
 			return ;
 		}
 	}
 	//si le chan existe pas : on le crée
 	Channel *new_chan = new Channel((*_cmd)[_actual_cmd][1], _client);
 	//on rajoute le chan dans la liste des chans du client	
-	_client->add_channel(new_chan);
+	_client->addChannel(new_chan);
 	//on ajoute le nouveau chan à la liste _all_chans
 	_all_channels.push_back(new_chan);
 
-//POUR REGARDER CE QUI A UN RAPPORT AVEC LES CHANNELS
-/*	for(std::vector<Channel *>::iterator it1 = _all_channels.begin() ; it1 != _all_channels.end() ; ++it1)
-	{
+
+	//POUR REGARDER CE QUI A UN RAPPORT AVEC LES CHANNELS
+	/*	for(std::vector<Channel *>::iterator it1 = _all_channels.begin() ; it1 != _all_channels.end() ; ++it1)
+		{
 		std::cout << "_all_channels = " << (*it1)->getName() << std::endl;
-	}
-	std::vector<Channel *> chacha = (*_client).getClientChannels();
-	for(std::vector<Channel *>::iterator it2 = chacha.begin() ; it2 != chacha.end() ; ++it2)
-	{
+		}
+		std::vector<Channel *> chacha = (*_client).getClientChannels();
+		for(std::vector<Channel *>::iterator it2 = chacha.begin() ; it2 != chacha.end() ; ++it2)
+		{
 		std::cout << "_client->_client_channels = " << (*it2)->getName() << std::endl;
-	}
-	std::vector<Client *> clicli = new_chan->getListClients();
-	for(std::vector<Client *>::iterator it3 = clicli.begin() ; it3 != clicli.end() ; ++it3)
-	{
+		}
+		std::vector<Client *> clicli = new_chan->getListClients();
+		for(std::vector<Client *>::iterator it3 = clicli.begin() ; it3 != clicli.end() ; ++it3)
+		{
 		std::cout << "new_chan->list_clients = " << (*it3)->getNickname() << std::endl;
-	}*/
+		}*/
 }
 
 // QUIT
@@ -452,10 +464,10 @@ void Command::sendToClient(int numeric_replies)
 				break;
 			}
 		case 221: //RPL_UMODEIS
-		{
-			msg += _client->getUsername() + _client->getOptions() + "\r\n";	
-			break ;
-		}
+			{
+				msg += _client->getUsername() + _client->getOptions() + "\r\n";	
+				break ;
+			}
 		case 381: //RPL_YOUREOPER
 			{
 				msg += _client->getUsername() + " :You are now an IRC operator\r\n";
@@ -595,35 +607,6 @@ void Command::fatalError(std::string msg_error)
 }
 
 // CHANNELS PART
-
-/*
-void Command::add_channel(Channel *channel)
-{
-	for (std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
-	{
-		if ((*it) == channel)
-			return ;
-	}
-	_all_channels.push_back(channel);
-	_actual_channel = channel;
-}
-
-void Command::leave_channel(Channel *channel)
-{
-	if (_actual_channel == channel)
-	{
-		for (std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
-		{
-			if ((*it) == channel)
-			{
-				//il faut suppr le chan de la liste de tous les chans
-				//(*it).erase();
-				_actual_channel = NULL;
-			}
-		}
-	}
-}
-*/
 
 std::vector<Channel *> Command::getAllChannels()
 {

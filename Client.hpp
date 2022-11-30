@@ -56,8 +56,8 @@ class Client
 		void setUsername(std::string username);
 		bool getOper();
 		void setOper(bool oper);
-		void add_channel(Channel *channel);
-		void leave_channel(Channel *channel);
+		void addChannel(Channel *channel);
+		void leaveChannel(Channel *channel);
 		std::vector<Channel *> getClientChannels();
 
 	private:
