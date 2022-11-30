@@ -56,6 +56,9 @@ class Client
 		void setUsername(std::string username);
 		bool getOper();
 		void setOper(bool oper);
+		void add_channel(Channel *channel);
+		void leave_channel(Channel *channel);
+		std::vector<Channel *> getClientChannels();
 
 	private:
 		Client();
@@ -71,8 +74,8 @@ class Client
 		std::string	_username;
 		std::string	_msg;
 		std::vector<std::vector<std::string> > _cmd;
-//mettre en vector si un client peut avoir plusieurs chans en meme temps
 		bool		_oper;
+		std::vector<Channel *> _client_channels;
 };
 
 #endif

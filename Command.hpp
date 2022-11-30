@@ -49,10 +49,6 @@ class Command
 
 		//Channels helper
 		void sendToChannel();
-		void add_channel(Channel *channel);
-		void leave_channel(Channel *channel);
-		Channel *getActualChannel();
-		void setActualChannel(Channel *channel);
 		std::vector<Channel *> getAllChannels();
 
 		//Clients
@@ -72,7 +68,6 @@ class Command
 		std::string	_oper_name;
 		std::string	_oper_pass;
 		//Channels
-		Channel *_actual_channel;
 		std::vector<Channel *> _all_channels;
 		//ERROR
 		bool _fatal_error;

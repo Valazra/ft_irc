@@ -13,6 +13,7 @@ class Channel
 		Channel(std::string name_chan, Client *client);
 		virtual ~Channel();
 		std::string getName();
+		std::vector<Client *> getListClients();
 
 	private:
 		Channel();

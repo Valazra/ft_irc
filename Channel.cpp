@@ -14,3 +14,8 @@ std::string Channel::getName()
 {
 	return (_name);
 }
+
+std::vector<Client *> Channel::getListClients()
+{
+	return (_list_clients);
+}
