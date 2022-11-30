@@ -316,15 +316,18 @@ void	Command::join()
 		std::cout << "_all_channels = " << (*it1)->getName() << std::endl;
 	}
 
-	for(std::vector<Channel *>::iterator it2 = (*_client).getClientChannels().begin() ; it2 != (*_client).getClientChannels().end() ; ++it2)
+	std::vector<Channel *> chacha= (*_client).getClientChannels();
+
+	for(std::vector<Channel *>::iterator it2 = chacha.begin() ; it2 != chacha.end() ; ++it2)
 	{
 		std::cout << "1" << std::endl;
-	//	std::cout << "_client->_client_channels = " << (*it2)->getName() << std::endl;
+		std::cout << "_client->_client_channels = " << (*it2)->getName() << std::endl;
 		std::cout << "2" << std::endl;
 	}
+	/*
 	std::vector<Client *>::iterator it5 = new_chan.getListClients().begin();
 	std::cout << "new_chan->list_clients = " << (*it5)->getNickname() << std::endl;
-/*	for(std::vector<Client *>::iterator it3 = new_chan.getListClients().begin() ; it3 != new_chan.getListClients().end() ; ++it3)
+	for(std::vector<Client *>::iterator it3 = new_chan.getListClients().begin() ; it3 != new_chan.getListClients().end() ; ++it3)
 	{
 		std::cout << "new_chan->list_clients = " << (*it3)->getNickname() << std::endl;
 	}*/
