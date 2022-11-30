@@ -9,6 +9,9 @@
 #include <ostream>
 #include <iostream>
 #include <vector>
+#include <iostream>
+#include <stdio.h>
+#include <time.h>
 # define DEBUG 1
 
 class Server;
@@ -37,18 +40,22 @@ class Command
 		void privmsg();
 		void quit();
 		void mode();
+		void notice();
+		void kick();
+		void kill();
 		void fatalError(std::string msg_error); //ERROR
 
 		//COMMANDS UTILS
 		void sendToClient(int numeric_replies);
-		void sendToTarget(std::string target_name, int target_socket);
+		void sendToTarget(std::string target_name, int target_socket, bool is_notice);
 		int parsingNickname(std::string nickname);
 		int checkNickname(std::string nickname);
 		bool check_if_valid_cmd(std::string cmd);
 		std::string insert_zeros(int nbr);
+		std::string getTime();
 
 		//Channels helper
-		void sendToChannel(Channel *channel);
+		void sendToChannel(Channel *channel, bool is_notice);
 		std::vector<Channel *> getAllChannels();
 
 		//Clients
@@ -69,8 +76,11 @@ class Command
 		std::string	_oper_pass;
 		//Channels
 		std::vector<Channel *> _all_channels;
+		Channel *_actual_chan;
 		//ERROR
 		bool _fatal_error;
+		//Time
+		std::string _creationTime;
 };
 
 #endif

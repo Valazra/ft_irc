@@ -1,7 +1,7 @@
 #include "Command.hpp"
 
 Command::Command(std::map<int, Client *> *client_map, std::string password):
-	_clients_ptr(client_map), _password(password), _correctPass(false), _server_name("localhost"), _oper_name("coco"), _oper_pass("toto"),_fatal_error(0) 
+	_clients_ptr(client_map), _password(password), _correctPass(false), _server_name("localhost"), _oper_name("coco"), _oper_pass("toto"),_fatal_error(0), _creationTime(getTime()) 
 {
 	_cmd_list.push_back("MODE");
 	_cmd_list.push_back("OPER");
@@ -12,6 +12,9 @@ Command::Command(std::map<int, Client *> *client_map, std::string password):
 	_cmd_list.push_back("JOIN");
 	_cmd_list.push_back("PRIVMSG");
 	_cmd_list.push_back("QUIT");
+	_cmd_list.push_back("NOTICE");
+	_cmd_list.push_back("KILL");
+	_cmd_list.push_back("KICK");
 	_cmd_availables["MODE"] = &Command::mode;
 	_cmd_availables["OPER"] = &Command::oper;
 	_cmd_availables["CAP"] = &Command::cap;
@@ -21,6 +24,9 @@ Command::Command(std::map<int, Client *> *client_map, std::string password):
 	_cmd_availables["JOIN"] = &Command::join;
 	_cmd_availables["PRIVMSG"] = &Command::privmsg;
 	_cmd_availables["QUIT"] = &Command::quit;
+	_cmd_availables["NOTICE"] = &Command::notice;
+	_cmd_availables["KILL"] = &Command::kill;
+	_cmd_availables["KICK"] = &Command::kick;
 }
 
 Command::~Command()
@@ -87,14 +93,42 @@ void	Command::mode()
 {
 	if (DEBUG)
 		std::cout << "Command::mode" << std::endl;
-	if ((*_cmd)[_actual_cmd].size() <= 2)
+	if ((*_cmd)[_actual_cmd].size() < 2)
 	{
 		sendToClient(461); //ERR_NEEDMOREPARAMS
 		return ;
 	}
+	std::string target_name = (*_cmd)[_actual_cmd][1];
 	if ((*_cmd)[_actual_cmd][1][0] == '#')
 	{
 		//Channel part
+		for(std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
+		{
+			if ((*it)->getName() == target_name)
+			{
+				_actual_chan = (*it);
+				if ((*_cmd)[_actual_cmd].size() == 2)
+				{
+					sendToClient(324); //RPL_CHANNELMODEIS
+									   // On peut aussi envoyer la 329 pour donner la date de creation du chan mais osef, nn?
+					return ;
+				}
+				//user must have appropriate chan privilege to changes the mode
+				/*
+				if (rightsForThisChanAndThisMode(_client, mode))
+				{
+				
+				}
+				else
+				{
+					sendToClient(482); //ERR_CHANOPRIVSNEEDED
+				}
+				*/
+
+			}
+		}
+		sendToClient(403); //ERR_NOSUCHCHANNEL
+
 	}
 	else
 	{
@@ -109,14 +143,14 @@ void	Command::mode()
 			sendToClient(502); //ERR_USERSDONTMATCH 
 			return ;
 		}
-		if ((*_cmd)[_actual_cmd].size() == 3)
+		if ((*_cmd)[_actual_cmd].size() == 2)
 		{
 			sendToClient(221); //RPL_UMODEIS 
 			return ;
 		}
-		if ((*_cmd)[_actual_cmd][4] == "-")
+		if ((*_cmd)[_actual_cmd][3] == "-")
 		{
-			if ((*_cmd)[_actual_cmd].size() > 4 && (*_cmd)[_actual_cmd][5] == "o")
+			if ((*_cmd)[_actual_cmd].size() > 4 && (*_cmd)[_actual_cmd][4] == "o")
 			{
 				(*_client).setOper(false);
 				//pas sur d'envoyer la 221 ici peut etre pas une numeric replies juste
@@ -159,7 +193,6 @@ void	Command::oper()
 		sendToClient(464);//ERR_PASSWDMISMATCH
 		return ;
 	}
-
 }
 
 // CAP
@@ -219,7 +252,6 @@ int Command::checkNickname(std::string nickname)
 			return (1);
 	}
 	return (0);
-
 }
 
 void	Command::nick()
@@ -242,7 +274,6 @@ void	Command::nick()
 	}
 	else
 	{
-		//probleme a faire getnickname alors que il y en a pas au debut?
 		if (DEBUG)
 			std::cout << "old nick name = " << _client->getNickname() << std::endl;
 		_client->setNickname((*_cmd)[_actual_cmd][1]);
@@ -328,7 +359,6 @@ void	Command::join()
 	//on ajoute le nouveau chan à la liste _all_chans
 	_all_channels.push_back(new_chan);
 
-
 	//POUR REGARDER CE QUI A UN RAPPORT AVEC LES CHANNELS
 	/*	for(std::vector<Channel *>::iterator it1 = _all_channels.begin() ; it1 != _all_channels.end() ; ++it1)
 		{
@@ -346,14 +376,58 @@ void	Command::join()
 		}*/
 }
 
+void Command::kick()
+{
+	if (DEBUG)
+		std::cout << "Command::kick" << std::endl;
+}
+void Command::kill()
+{
+	if (DEBUG)
+		std::cout << "Command::kill" << std::endl;
+}
 // QUIT
 void	Command::quit()
 {
+	if (DEBUG)
+		std::cout << "Command::notice" << std::endl;
 	//faudra bien tout libérer ici
 	//fatal_error
 	_client->setStatus(REMOVE_ME);
 }
 
+//NOTICE == SAME AS PRIVMSG BUT NEVER SEND AUTOMATIC REPLY
+void	Command::notice()
+{
+	if (DEBUG)
+		std::cout << "Command::notice" << std::endl;
+	if ((*_cmd)[_actual_cmd].size() < 3)
+		return ;
+	std::string target_name = (*_cmd)[_actual_cmd][1];
+	if (target_name[0] == '#') //Channel part
+	{
+		for(std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
+		{
+			if ((*it)->getName() == target_name)
+			{
+				sendToChannel((*it), true);
+				return ;
+			}
+		}
+	}
+	else //Client part
+	{
+		std::cout << "notice nice part" << std::endl;
+		for (std::map<int, Client *>::iterator it = (*_clients_ptr).begin() ; it != (*_clients_ptr).end() ; ++it)
+		{
+			if ((*it).second->getNickname() == target_name) 
+			{
+				sendToTarget(target_name, (*it).first, true);
+				return ;
+			}
+		}
+	}
+}
 
 // PRIVMSG
 void	Command::privmsg()
@@ -366,26 +440,34 @@ void	Command::privmsg()
 		return ;
 	}
 	std::string target_name = (*_cmd)[_actual_cmd][1];
-	//on parcoure tous les clients	
-	for (std::map<int, Client *>::iterator it = (*_clients_ptr).begin() ; it != (*_clients_ptr).end() ; ++it)
+	//Channel part
+	if (target_name[0] == '#')
 	{
-		//si la target correspond à un client
-		if ((*it).second->getNickname() == target_name) 
+		for(std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
 		{
-
-			//alors on sendToTarget et on return
-			sendToTarget(target_name, (*it).first);
+			if ((*it)->getName() == target_name)
+			{
+				_actual_chan = (*it);
+				sendToChannel((*it), false);
+				return ;
+			}
+		}
+		sendToClient(404); //ERR_CANNOTSENDTOCHAN
+	}
+	else //CLient part
+	{
+		if (!checkNickname(target_name))
+		{
+			sendToClient(401); //ERR_NOSUCHNICK 
 			return ;
 		}
-	}
-	//on parcoure tous les channels
-	for(std::vector<Channel *>::iterator it9 = _all_channels.begin() ; it9 != _all_channels.end() ; ++it9)
-	{
-		//si la target correspond à un channel
-		if ((*it9)->getName() == target_name)
+		for (std::map<int, Client *>::iterator it = (*_clients_ptr).begin() ; it != (*_clients_ptr).end() ; ++it)
 		{
-			sendToChannel((*it9));
-			return ;
+			if ((*it).second->getNickname() == target_name) 
+			{
+				sendToTarget(target_name, (*it).first, false);
+				return ;
+			}
 		}
 	}
 	sendToClient(401); //ERR_NOSUCHNICK (401)			
@@ -393,13 +475,15 @@ void	Command::privmsg()
 
 // SEND TO
 // PRIVMSG TARGET
-void Command::sendToTarget(std::string target_name, int target_socket)
+void Command::sendToTarget(std::string target_name, int target_socket, bool is_notice)
 {
 	if (DEBUG)
 		std::cout << "target name puis target socket " << target_name << " "<< target_socket << std::endl;
 	std::string msg;
-	msg = ":" + _client->getNickname() + " PRIVMSG " + target_name + " " ;
-
+	if (is_notice)
+		msg = ":" + _client->getNickname() + " NOTICE " + target_name + " " ;
+	else
+		msg = ":" + _client->getNickname() + " PRIVMSG " + target_name + " " ;
 	for(std::vector<std::string>::iterator it2 = (*_cmd)[_actual_cmd].begin() + 2 ; it2 != (*_cmd)[_actual_cmd].end() ; ++it2)
 	{
 		if (it2 != (*_cmd)[_actual_cmd].begin() + 2)
@@ -413,10 +497,13 @@ void Command::sendToTarget(std::string target_name, int target_socket)
 }
 
 // PRIVMSG CHANNEL
-void Command::sendToChannel(Channel *channel)
+void Command::sendToChannel(Channel *channel, bool is_notice)
 {
 	std::string msg;
-	msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@localhost PRIVMSG " + (*channel).getName()  + " " ;
+	if (is_notice)
+		msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@localhost NOTICE " + (*channel).getName()  + " " ;
+	else
+		msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@localhost PRIVMSG " + (*channel).getName()  + " " ;
 	for(std::vector<std::string>::iterator it = (*_cmd)[_actual_cmd].begin() + 2 ; it != (*_cmd)[_actual_cmd].end() ; ++it)
 	{
 		if (it != (*_cmd)[_actual_cmd].begin() + 2)
@@ -432,6 +519,18 @@ void Command::sendToChannel(Channel *channel)
 		if ((*it2) != _client)
 			send((*it2)->getSock(), msg.c_str(), msg.size(), 0);
 	}
+}
+
+std::string Command::getTime()
+{
+    time_t     now = time(0);
+    struct tm  tstruct;
+    char       buf[80];
+    tstruct = *localtime(&now);
+    strftime(buf, sizeof(buf), "%Y-%m-%d.%X", &tstruct);
+	std::string return_s(buf);
+
+    return (return_s);
 }
 
 //NUMERIC REPLIES
@@ -452,22 +551,22 @@ void Command::sendToClient(int numeric_replies)
 			}
 		case 2:
 			{
-				msg += "Your host is " + _server_name + ", running on version [42.42]\r\n";
+				msg += "Your host is " + _server_name + ", running on version [ft_irc]\r\n";
 				break;
 			}
 		case 3:
 			{
-				msg += "This server was created 15h30 fdp\r\n";
+				msg += "This server was created at: " + _creationTime + " \r\n";
 				break;
 			}
 		case 4:
 			{
-				msg += _server_name + " version [42.42]. Available user MODE : +Oa . Avalaible channel MODE : none. \r\n";
+				msg += _server_name + " version [ft_irc]. Available user MODE : +o . Avalaible channel MODE : none. \r\n";
 				break;
 			}
 		case 5:
 			{
-				msg += "Sorry IRC_90's capacity is full. Please retry connection later\r\n";
+				msg += "CHANTYPES=# CHANMODES=,,,, MODES=1 :are supported by this server\r\n";
 				break;
 			}
 		case 221: //RPL_UMODEIS
@@ -563,6 +662,11 @@ void Command::sendToClient(int numeric_replies)
 		case 476: //ERR_BADCHANMASK // A FINIR AVEC LES CHANS
 			{
 				msg += " :Bad Channel Mask\r\n";	
+				break;
+			}
+		case 482: //ERR_CHANOPRIVSNEEDED
+			{
+				msg += _client->getUsername() + _actual_chan->getName() +" :You're not channel operator\r\n";	
 				break;
 			}
 		case 491: //ERR_NOOPERHOST
