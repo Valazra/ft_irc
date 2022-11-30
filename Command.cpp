@@ -292,42 +292,36 @@ void	Command::user()
 void	Command::join()
 {
 	//on parcoure tous les chans
-	for (std::vector<Channel *>::iterator it = getAllChannels().begin() ; it != getAllChannels().end() ; ++it)
+	for (std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
 	{
 		//si le chan existe déjà
 		if ((*it)->getName() == (*_cmd)[_actual_cmd][1])
 		{
-			//on ajoute le chan au client et on quitte la commande
-			_client->add_channel(*it); 
+			//on ajoute le chan au client et le client au chan et on quitte la commande
+			_client->add_channel(*it);
+			(*it)->addClient(_client); 
 			return ;
 		}
 	}
 	//si le chan existe pas : on le crée
-	Channel new_chan((*_cmd)[_actual_cmd][1], _client);
+	Channel *new_chan = new Channel((*_cmd)[_actual_cmd][1], _client);
 	//on rajoute le chan dans la liste des chans du client	
-	_client->add_channel(&new_chan);
+	_client->add_channel(new_chan);
 	//on ajoute le nouveau chan à la liste _all_chans
-	_all_channels.push_back(&new_chan);
+	_all_channels.push_back(new_chan);
 
-	std::cout << "new_chan->getName() = " << new_chan.getName() << std::endl;
-	std::cout << "APRES LA FONCTION JOIN :" << std::endl;
-	for(std::vector<Channel *>::iterator it1 = _all_channels.begin() ; it1 != _all_channels.end() ; ++it1)
+//POUR REGARDER CE QUI A UN RAPPORT AVEC LES CHANNELS
+/*	for(std::vector<Channel *>::iterator it1 = _all_channels.begin() ; it1 != _all_channels.end() ; ++it1)
 	{
 		std::cout << "_all_channels = " << (*it1)->getName() << std::endl;
 	}
-
-	std::vector<Channel *> chacha= (*_client).getClientChannels();
-
+	std::vector<Channel *> chacha = (*_client).getClientChannels();
 	for(std::vector<Channel *>::iterator it2 = chacha.begin() ; it2 != chacha.end() ; ++it2)
 	{
-		std::cout << "1" << std::endl;
 		std::cout << "_client->_client_channels = " << (*it2)->getName() << std::endl;
-		std::cout << "2" << std::endl;
 	}
-	/*
-	std::vector<Client *>::iterator it5 = new_chan.getListClients().begin();
-	std::cout << "new_chan->list_clients = " << (*it5)->getNickname() << std::endl;
-	for(std::vector<Client *>::iterator it3 = new_chan.getListClients().begin() ; it3 != new_chan.getListClients().end() ; ++it3)
+	std::vector<Client *> clicli = new_chan->getListClients();
+	for(std::vector<Client *>::iterator it3 = clicli.begin() ; it3 != clicli.end() ; ++it3)
 	{
 		std::cout << "new_chan->list_clients = " << (*it3)->getNickname() << std::endl;
 	}*/
@@ -366,13 +360,12 @@ void	Command::privmsg()
 		}
 	}
 	//on parcoure tous les channels
-	for(std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
+	for(std::vector<Channel *>::iterator it9 = _all_channels.begin() ; it9 != _all_channels.end() ; ++it9)
 	{
-		std::cout << "it = " << (*it)->getName() << " et target name = " << target_name << std::endl;
 		//si la target correspond à un channel
-		if ((*it)->getName() == target_name)
+		if ((*it9)->getName() == target_name)
 		{
-			sendToChannel();
+			sendToChannel((*it9));
 			return ;
 		}
 	}
@@ -401,8 +394,25 @@ void Command::sendToTarget(std::string target_name, int target_socket)
 }
 
 // PRIVMSG CHANNEL
-void Command::sendToChannel()
+void Command::sendToChannel(Channel *channel)
 {
+	std::string msg;
+	msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@localhost PRIVMSG " + (*channel).getName()  + " " ;
+	for(std::vector<std::string>::iterator it = (*_cmd)[_actual_cmd].begin() + 2 ; it != (*_cmd)[_actual_cmd].end() ; ++it)
+	{
+		if (it != (*_cmd)[_actual_cmd].begin() + 2)
+			msg += " ";
+		msg += *it;
+	}
+	msg += "\r\n";
+	if (DEBUG)
+		std::cout << "MSG ="<< msg << std::endl;
+	std::vector<Client *> clicli = (*channel).getListClients();
+	for (std::vector<Client *>::iterator it2 = clicli.begin() ; it2 != clicli.end() ; ++it2)
+	{
+		if ((*it2) != _client)
+			send((*it2)->getSock(), msg.c_str(), msg.size(), 0);
+	}
 }
 
 //NUMERIC REPLIES

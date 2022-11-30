@@ -19,3 +19,8 @@ std::vector<Client *> Channel::getListClients()
 {
 	return (_list_clients);
 }
+
+void Channel::addClient(Client *client)
+{
+	_list_clients.push_back(client);
+}

@@ -48,7 +48,7 @@ class Command
 		std::string insert_zeros(int nbr);
 
 		//Channels helper
-		void sendToChannel();
+		void sendToChannel(Channel *channel);
 		std::vector<Channel *> getAllChannels();
 
 		//Clients

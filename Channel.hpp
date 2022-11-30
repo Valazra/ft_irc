@@ -6,6 +6,7 @@
 # include <vector>
 
 class Client;
+class Command;
 
 class Channel
 {
@@ -14,6 +15,7 @@ class Channel
 		virtual ~Channel();
 		std::string getName();
 		std::vector<Client *> getListClients();
+		void addClient(Client *client);
 
 	private:
 		Channel();
