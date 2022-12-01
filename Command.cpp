@@ -50,10 +50,13 @@ void Command::execCmd()
 	{
 		if ((it->empty()))
 			return ;
-		std::cout << "execCmd() de la commande : " << it->front() << std::endl;
-		// la commande est pas une qu on gere voir ce qu on fait au lieu de return ;
+		if (DEBUG)
+			std::cout << "execCmd() this cmd:" << it->front() << std::endl;
 		if (!check_if_valid_cmd(it->front()))
+		{
+			sendToClient(421); //ERR_UNKNOWNCOMMAND TODO
 			return ;
+		}
 		(this->*_cmd_availables[it->front()])();
 		if (_fatal_error)
 			return ;
@@ -64,7 +67,6 @@ void Command::execCmd()
 void Command::readCmd(int client_socket)
 {
 	_fatal_error = false;
-//	_correctPass = false;
 	_client_socket = client_socket;
 	_client = (*_clients_ptr)[client_socket];
 	_cmd = _client->getCmd();
@@ -164,7 +166,6 @@ void	Command::mode()
 	}
 }
 
-
 // OPER
 void	Command::oper()
 {
@@ -184,6 +185,7 @@ void	Command::oper()
 	{
 		_client->setOper(true);
 		sendToClient(381);
+		sendToClient(221); //RPL_UMODEIS 
 		//mettre aussi un message de MODE (RPL_UMODEIS)
 		return ;
 	}
@@ -404,10 +406,61 @@ void Command::kick()
 		std::cout << "Command::kick" << std::endl;
 }
 // KILL
+/*
+    When a client is removed as the result of a KILL message, the server
+   SHOULD add the nickname to the list of unavailable nicknames in an
+   attempt to avoid clients to reuse this name immediately which is
+   usually the pattern of abusive behaviour often leading to useless
+   "KILL loops".
+ */
 void Command::kill()
 {
 	if (DEBUG)
 		std::cout << "Command::kill" << std::endl;
+	if ((*_cmd)[_actual_cmd].size() < 3)
+	{
+		sendToClient(461); //ERR_NEEDMOREPARAMS
+		return ;
+	}
+	if (!(*_client).getOper())
+	{
+		sendToClient(481); //ERR_NOPRIVILEGES TODO
+		return ;
+	}
+	if (!checkNickname((*_cmd)[_actual_cmd][1]))
+	{
+		sendToClient(401); //ERR_NOSUCHNICK 
+		return ;
+	}
+	int socket_killed;
+	for (std::map<int, Client *>::iterator it = (*_clients_ptr).begin() ; it != (*_clients_ptr).end() ; ++it)
+	{
+		if ((*it).second->getNickname() == (*_cmd)[_actual_cmd][1])
+		{
+			socket_killed = (*it).first;
+		}
+	}
+	std::string reason_of_kill;
+	for(std::vector<std::string>::iterator it = (*_cmd)[_actual_cmd].begin() + 2 ; it != (*_cmd)[_actual_cmd].end() ; ++it)
+	{
+		if (it != (*_cmd)[_actual_cmd].begin() + 2)
+			reason_of_kill += " ";
+		reason_of_kill += *it;
+	}
+	std::string msg;
+	msg = ":" + _client->getNickname() + " KILL " + (*_cmd)[_actual_cmd][1] + " :" + reason_of_kill + "\r\n";
+	send(socket_killed, msg.c_str(), msg.size(), 0);
+
+	msg = ":" + _client->getNickname() + " QUIT " + (*_cmd)[_actual_cmd][1] + " :";
+	msg += "Killed (" + _client->getNickname() + "(" + reason_of_kill + "))\r\n";
+	send(socket_killed, msg.c_str(), msg.size(), 0);
+	
+	msg = ":" + _client->getNickname() + " " + "ERROR" + " :";
+	msg += "Closing Link: " + _server_name;
+	msg += "(Killed (" + _client->getNickname() + "(" + reason_of_kill + ")))\r\n";
+	send(socket_killed, msg.c_str(), msg.size(), 0);
+	closeConnection(socket_killed);
+	_fatal_error = true;
 }
 
 // QUIT
@@ -415,10 +468,21 @@ void	Command::quit()
 {
 	if (DEBUG)
 		std::cout << "Command::quit" << std::endl;
+	closeConnection(_client_socket);
+	//
+	//Enlever le client des chans dans lequel il est, fermer le chan si il etait seul
+	
+}
+
+/*
+void	Command::quit(std::string reason)
+{
+	if (DEBUG)
+		std::cout << "Command::quit" << std::endl;
 	//faudra bien tout libérer ici
 	//fatal_error
 	_client->setStatus(REMOVE_ME);
-}
+}*/
 
 //NOTICE == SAME AS privmsg BUT NEVER SEND AUTOMATIC REPLY
 void	Command::notice()
@@ -745,19 +809,23 @@ std::string Command::insert_zeros(int nbr)
 void Command::fatalError(std::string msg_error)
 {
 	std::string msg;
-	msg = ":" + _client->getNickname() + " " + "ERROR" + " :" +msg_error + "\r\n";
+	msg = ":" + _client->getNickname() + " " + "ERROR" + " :" + msg_error + "\r\n";
 	if (DEBUG)
 		std::cout << msg << std::endl;
-
 	send(_client_socket, msg.c_str(), msg.size(), 0);
 	_fatal_error = true;
-	close(_client_socket);
-	(*_clients_ptr).erase(_client_socket);
-	std::cout << "fatalError" << std::endl;
+	closeConnection(_client_socket);
+}
+
+void Command::closeConnection(int close_socket)
+{
+	//before check if user in channel
+	close(close_socket);
+	//free?
+	(*_clients_ptr).erase(close_socket);
 }
 
 // CHANNELS PART
-
 std::vector<Channel *> Command::getAllChannels()
 {
 	return (_all_channels);

@@ -5,12 +5,11 @@ _port(port), _pass(password), _cmd(&_clients, password)
 {
 
 	int listened_sock;
-	// int sock(int domain, int type, int protocol);
+	// int socket(int domain, int type, int protocol);
 	// domain: PF_INET Protocoles Internet IPv4 ou PF_INET6 Protocoles Internet IPv6
 	// type: SOCK_STREAM Provides sequenced, reliable, two-way, connection-based byte streams. An out-of-band data transmission mechanism may be supported.
 	if ((listened_sock = socket(PF_INET, SOCK_STREAM, getprotobyname("tcp")->p_proto)) == 0)
 		throw Server::ErrnoEx();
-
 	// int setsockopt(int sockfd, int level, int optname, const void *optval, socklen_t optlen);
 	// manipulate options for the socket referred to by the file descriptor sockfd
 	// SOL_SOCKET is the socket layer itself. It is used for options that are protocol independent.
@@ -21,7 +20,6 @@ _port(port), _pass(password), _cmd(&_clients, password)
 	int enable = 1; // CHECK ENABLE
 	if (setsockopt(listened_sock, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &enable, sizeof(enable)))
 		throw Server::ErrnoEx();
-
 	/*
 	 * int fcntl(int fd, int cmd, ... * arg *);
 	 * fcntl() performs one of the operations described below on the open file
@@ -33,7 +31,6 @@ _port(port), _pass(password), _cmd(&_clients, password)
 	*/
 	if (fcntl(listened_sock, F_SETFL, O_NONBLOCK) < 0)
 		throw Server::ErrnoEx();
-
 	// (IPv4 only--see struct sockaddr_in6 for IPv6)
 	/*
 	   To deal with struct sockaddr, programmers created a parallel structure: struct sockaddr_in (“in” for “Internet”) to be used with IPv4.
@@ -47,7 +44,6 @@ _port(port), _pass(password), _cmd(&_clients, password)
 	*/
 	struct sockaddr_in addr;
 	addr.sin_family = AF_INET; //ipv4
-
 	/* When INADDR_ANY is
 	   specified in the bind call, the socket will be bound to all local
 	   interfaces.  When listen(2) is called on an unbound socket, the
@@ -55,10 +51,8 @@ _port(port), _pass(password), _cmd(&_clients, password)
 	   local address set to INADDR_ANY.
 	   */
 	addr.sin_addr.s_addr = INADDR_ANY;
-
 	// The htons() function converts the unsigned short integer hostshort from host byte order to network byte order.
 	addr.sin_port = htons(atoi(_port.c_str()));
-
 	/*
 	   When a socket is created with socket(2), it exists in a name
 	   space (address family) but has no address assigned to it.  bind()
@@ -70,20 +64,15 @@ _port(port), _pass(password), _cmd(&_clients, password)
 	*/
 	if (bind(listened_sock, (struct sockaddr *)&addr, sizeof(addr)) < 0)
 		throw Server::ErrnoEx();
-
 	//10 est le nombre max de clients à faire la queue
 	if (listen(listened_sock, 10) < 0)
 		throw Server::ErrnoEx();
-
-	std::cout << "IRC server has been initialized" << std::endl;
-	std::cout << "Waiting for clients" << std::endl;
-
-	//on ajoute 1 elem pollfd sur notre vector (tableau) de pollfd
-	//on remplit notre struct avec notre sock et POLLIN pour dire qu'on veut
-	//etre avertit si on recoit des donnees sur cette socket
 	_fds.push_back(pollfd());
 	_fds.back().fd = listened_sock;
 	_fds.back().events = POLLIN;
+	std::cout << "Welcome." << std::endl;
+	std::cout << "Our IRC server has been initialized." << std::endl;
+	std::cout << "Waiting for clients..." << std::endl;
 }
 
 Server::~Server()
@@ -92,56 +81,32 @@ Server::~Server()
 
 void Server::run()
 {
-	//RAPPEL NOTRE _fds[0] C EST NOTRE LISTENED_SOCK
-
-	// ces zinzins remplissent leur vector de client avec getclient qui
-	// trouve ces clients dans un map 
-//	std::vector<Client *> clients = getClients();
-
 	 // int poll(struct pollfd fds[], nfds_t nfds, int timeout);
 	 //fds is our array of information (which sockets to monitor for what),
 	 //nfds is the count of elements in the array, and timeout is a timeout in milliseconds.
 	 //It returns the number of elements in the array that have had an event occur.
-	// de ce que je comprends si jamais notre poll sur notre fd listen se branle trop
-	// on se casse de server::run on retourne dans leur main qui relance la boucle
-	// donc on reviendra ici jusqu'a ce qu' on est quelque chose
-	// mtn le probleme de leur truc c est que si il y a un autre type de bug ca 
-	// renvoie aussi -1 et on gere pas l erreur
+	 //TO DO: try to treat if poll encounter error??
 	if (poll(&_fds[0], _fds.size(), (PING * 1000) / 10) == -1)
 		return;
-
-	//irc deco les clients qui repondent pas a leur ping a temps ca doit 
-	//etre un truc en rapport
-/*	if (std::time(0) - last_ping >= PING)
-	{
-		sendPing();
-		last_ping = std::time(0);
-	}
+	if (_fds[0].revents == POLLIN)
+		check_new_client();
 	else
 	{
-*/	   //en gros on regarde dans les events POLLIN qu'on a recu, si c'est la 
-	   //socket 0 c est un nouvel utilisateur donc on appel un truc pour voir
-	   //si on va accept cet utilisateur tcheck mot de passe etc...
-	   //ELSE si c'est un autre socket qui POLLIN c est que c est un gars
-	   //qu'on a deja accepte donc on creer une fonction recieve (ou autre nom) ou on va stocke
-	   //et traite les infos recus
-		if (_fds[0].revents == POLLIN)
-			check_new_client();
-		else
-			for (std::vector<pollfd>::iterator it = _fds.begin(); it != _fds.end(); ++it)
+		for (std::vector<pollfd>::iterator it = _fds.begin(); it != _fds.end(); ++it)
+		{
+			if ((*it).revents == POLLIN)
 			{
-				if ((*it).revents == POLLIN)
+				_clients[(*it).fd]->receive();
+				if (_clients[(*it).fd]->getStatus() == REMOVE_ME)
+					removeClient((*it).fd);
+				else if (_clients[(*it).fd]->getMsgFinish()) //le _msg_finish change dans client.receive()
 				{
-					_clients[(*it).fd]->receive();
-					if (_clients[(*it).fd]->getStatus() == REMOVE_ME)
-						removeClient((*it).fd);
-					else if (_clients[(*it).fd]->getMsgFinish()) //le _msg_finish change dans client.receive()
-					{
-						treat_complete_msg((*it).fd);
-					}
+					_cmd.readCmd((*it).fd);
 				}
 			}
-//	}
+		}
+	//supprimer les sockets des clients qu on a ferme dans _fds
+	}
 }
 
 void Server::check_new_client()
@@ -160,39 +125,16 @@ void Server::check_new_client()
 	int new_client_sock = accept(_fds[0].fd, (struct sockaddr *)&addr, &sock_len);
 	if (new_client_sock == -1)
 		throw Server::ErrnoEx();
-	// et donc la ils creent le nouveau client qu'ils rajoutent a la map de clients
 	if (DEBUG)
 		std::cout << new_client_sock << std::endl;
-	_clients[new_client_sock] =   new Client(new_client_sock, addr);
-	/*
-	// Si y'a pas de mdp on enregistre le client 
-	if (!(_pass.length())) 
-		_clients[new_client_sock]->setStatus(REGISTER);
-	*/
-	//on l'ajoute a notre vector de struct pollfd en ecoute
+	_clients[new_client_sock] = new Client(new_client_sock, addr);
 	_fds.push_back(pollfd());
 	_fds.back().fd = new_client_sock;
 	_fds.back().events = POLLIN;
 }
 
-void	Server::treat_complete_msg(int const &client_sock)
-{
-	_cmd.readCmd(client_sock);
-//	_client[client_sock]->clearMessage();
-//	_clients[client_sock]->clearCommand();
-//	_clients[client_sock]->clearCommand();
-//	this->find_to_kill();
-
-}
-
 void	Server::removeClient(int const &sock_to_remove)
 {
 	close(sock_to_remove);
-//faut iterer sur le map ou vector client pour erase je pense
 	_clients.erase(sock_to_remove);
-}
-
-//à faire
-void Server::sendPing()
-{
 }

@@ -18,7 +18,7 @@ _sock(sock), _msg_finish(0), _status(TO_REGISTER), _hostname(),_nickname(), _use
 
 void Client::receive()
 {
-	char buffer[MAX_CHAR + 1]; //à verif si on met ça ou pas
+	char buffer[MAX_CHAR + 1]; //VALIDER LA TAILLE DE MAX_CHAR ???
 	memset(buffer, 0, MAX_CHAR);
 	if (_msg_finish)
 	{
@@ -32,6 +32,7 @@ void Client::receive()
 		_msg.clear();
 		return;
 	}
+	// If recv return 0 that means the pair stop the connection normally
 	if (size == 0)
 	{
 		_msg.clear();
@@ -39,9 +40,8 @@ void Client::receive()
 		return;
 	}
 	buffer[size] = 0;
-
 	_msg += buffer;
-	//check if msg if end with \r follow by \n
+	//check if msg is end with \r\n
 	if (_msg.size() > 2 && *(_msg.end() - 2) ==  '\r' && *(_msg.end() - 1) == '\n')
 	{
 		_msg_finish = 1;
@@ -50,9 +50,7 @@ void Client::receive()
 	else
 		_msg_finish = 0;
 	if (DEBUG)
-	
-	std::cout << "THIS CLIENT SOCK RECEIVE : " << _sock << std::endl;
-	std::cout << "MESSAGE BRUT : " << _msg  << std::endl;
+		std::cout << "Client SOCK: |" << _sock << "| MSG BRUT |" << _msg  << "|" << std::endl;
 }
 
 void Client::splitCommand()
@@ -67,7 +65,6 @@ void Client::splitCommand()
 			std::string tmp_cmd(_msg.substr(new_start, i - new_start));
 			new_start = i + 2;
 			i += 2;
-
 			int j = 0;
 			int split_start = 0;
 			int special_case = 0;
@@ -85,7 +82,6 @@ void Client::splitCommand()
 				j++;
 			}
 			number_cmd++;
-
 		}
 		else
 			i++;

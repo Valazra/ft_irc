@@ -82,6 +82,8 @@ class Command
 		bool _fatal_error;
 		//Time
 		std::string _creationTime;
+		//Close
+		void closeConnection(int close_socket);
 };
 
 #endif

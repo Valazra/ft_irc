@@ -40,7 +40,6 @@ class Server
 		void check_new_client();
 		void sendPing();
 		void removeClient(int const &sock_to_remove);
-		void treat_complete_msg(int const &client_sock);
 		void registerClient(int const &client_sock);
 
 	private:
