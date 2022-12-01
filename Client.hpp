@@ -49,11 +49,13 @@ class Client
 		std::string getHostname();
 		std::string getNickname();
 		std::string getUsername();
+		std::string getRealname();
 		std::string getOptions();
 		bool IsOptionSet(std::string check, std::string option);
 		void changeOptions(std::string options, bool add);
 		void setNickname(std::string nickname);
 		void setUsername(std::string username);
+		void setRealname(std::string realname);
 		bool getOper();
 		void setOper(bool oper);
 		void addChannel(Channel *channel);
@@ -72,6 +74,7 @@ class Client
 		std::string	_hostname;
 		std::string	_nickname;
 		std::string	_username;
+		std::string	_realname;
 		std::string	_msg;
 		std::vector<std::vector<std::string> > _cmd;
 		bool		_oper;

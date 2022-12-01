@@ -2,7 +2,7 @@
 #include "Server.hpp"
 
 Client::Client(int sock, struct sockaddr_in address):
-_sock(sock), _msg_finish(0), _status(TO_REGISTER), _hostname(),_nickname(), _username(), _oper(false), _client_channels()
+_sock(sock), _msg_finish(0), _status(TO_REGISTER), _hostname(),_nickname(), _username(), _realname(), _oper(false), _client_channels()
 {
 	fcntl(sock, F_SETFL, O_NONBLOCK);
 	char hostname[NI_MAXHOST];
@@ -137,6 +137,11 @@ std::string Client::getUsername()
 	return (_username);
 }
 
+std::string Client::getRealname()
+{
+	return (_realname);
+}
+
 std::string Client::getHostname()
 {
 	return (_hostname);
@@ -150,6 +155,13 @@ void Client::setNickname(std::string nickname)
 void Client::setUsername(std::string username)
 {
 	_username = username;
+}
+
+//dans USER (on suppr les ":" au debut)
+void Client::setRealname(std::string realname)
+{
+	realname.erase(realname.begin());
+	_realname = realname;
 }
 
 bool Client::getOper()

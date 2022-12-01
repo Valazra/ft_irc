@@ -274,12 +274,14 @@ void	Command::nick()
 	}
 	else
 	{
-		if (DEBUG)
-			std::cout << "old nick name = " << _client->getNickname() << std::endl;
+	//	if (DEBUG)
+	//		std::cout << "old nick name = " << _client->getNickname() << std::endl;
+		std::string msg;
+		msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + "0" + " NICK " + (*_cmd)[_actual_cmd][1] + "\r\n";
+		send(_client_socket, msg.c_str(), msg.size(), 0);
 		_client->setNickname((*_cmd)[_actual_cmd][1]);
-		if (DEBUG)
-			std::cout << "new nick name = " << _client->getNickname() << std::endl;
-		//avertir le client que la commande nick est successfull et avertir les autres clients du changement de nickname
+	//	if (DEBUG)
+	//		std::cout << "new nick name = " << _client->getNickname() << std::endl;
 	}
 }
 
@@ -307,11 +309,18 @@ void	Command::user()
 	}
 	else
 	{ 
-		if (DEBUG)
+		/*if (DEBUG)
+		{
 			std::cout << "_client->getUsername() = " << _client->getUsername() << std::endl;
+			std::cout << "_client->getRealname() = " << _client->getRealname() << std::endl;
+		}*/
 		_client->setUsername((*_cmd)[_actual_cmd][1]);
-		if (DEBUG)
+		_client->setRealname((*_cmd)[_actual_cmd][4]);
+	/*	if (DEBUG)
+		{
 			std::cout << "_client->getUsername() = " << _client->getUsername() << std::endl;
+			std::cout << "_client->getRealname() = " << _client->getRealname() << std::endl;
+		}*/
 	}
 	sendToClient(1);
 	sendToClient(2);
@@ -376,27 +385,30 @@ void	Command::join()
 		}*/
 }
 
+// KICK
 void Command::kick()
 {
 	if (DEBUG)
 		std::cout << "Command::kick" << std::endl;
 }
+// KILL
 void Command::kill()
 {
 	if (DEBUG)
 		std::cout << "Command::kill" << std::endl;
 }
+
 // QUIT
 void	Command::quit()
 {
 	if (DEBUG)
-		std::cout << "Command::notice" << std::endl;
+		std::cout << "Command::quit" << std::endl;
 	//faudra bien tout libérer ici
 	//fatal_error
 	_client->setStatus(REMOVE_ME);
 }
 
-//NOTICE == SAME AS PRIVMSG BUT NEVER SEND AUTOMATIC REPLY
+//NOTICE == SAME AS privmsg BUT NEVER SEND AUTOMATIC REPLY
 void	Command::notice()
 {
 	if (DEBUG)
@@ -434,9 +446,14 @@ void	Command::privmsg()
 {
 	if (DEBUG)
 		std::cout << "Command::privmsg" << std::endl;
-	if ((*_cmd)[_actual_cmd].size() < 3)
+	if ((*_cmd)[_actual_cmd].size() == 1)
 	{
 		sendToClient(461); //ERR_NEEDMOREPARAMS
+		return ;
+	}
+	else if ((*_cmd)[_actual_cmd].size() == 2)
+	{
+		sendToClient(412);
 		return ;
 	}
 	std::string target_name = (*_cmd)[_actual_cmd][1];
@@ -589,19 +606,24 @@ void Command::sendToClient(int numeric_replies)
 				msg += _client->getUsername() + " " + _server_name + " :No such server\r\n";
 				break;
 			}
-		case 403: //ERR_NOSUCHCHANNEL //A FINIR AVEC LES CHANS
+		case 403: //ERR_NOSUCHCHANNEL
 			{
-				msg += _client->getUsername() + " " + " :No such channel\r\n";	
+				msg += _client->getUsername() + " " + _actual_chan->getName() + " :No such channel\r\n";	
 				break;
 			}
-		case 404: //ERR_CANNOTSENDTOCHAN // A FINIR AVEC LES CHANS
+		case 404: //ERR_CANNOTSENDTOCHAN
 			{
-				msg += _client->getUsername() + " " + " :Cannot send to channel\r\n";
+				msg += _client->getUsername() + " " + _actual_chan->getName() + " :Cannot send to channel\r\n";
 				break;
 			}
-		case 405: //ERR_TOOMANYCHANNELS // A FINIR AVEC LES CHANS
+		case 405: //ERR_TOOMANYCHANNELS
 			{
-				msg += _client->getUsername() + " " + " :You have  joined too many channels\r\n";
+				msg += _client->getUsername() + " " + _actual_chan->getName() + " :You have  joined too many channels\r\n";
+				break;
+			}
+		case 412: //ERR_NOTEXTTOSEND
+			{
+				msg += ":No text to send\r\n";
 				break;
 			}
 		case 431: //ERR_NONICKNAMEGIVEN
@@ -639,29 +661,29 @@ void Command::sendToClient(int numeric_replies)
 				msg += _client->getUsername() + " :Password incorrect\r\n";	
 				break;
 			}
-		case 471: //ERR_CHANNELISFULL // A FINIR AVEC LES CHANS
+		case 471: //ERR_CHANNELISFULL
 			{
-				msg += _client->getUsername() + " " + " :Cannot join channel (+1)\r\n";	
+				msg += _client->getUsername() + " " + _actual_chan->getName() + " :Cannot join channel (+1)\r\n";	
 				break;
 			}
-		case 473: //ERR_INVITEONLYCHAN // A FINIR AVEC LES CHANS
+		case 473: //ERR_INVITEONLYCHAN
 			{
-				msg += _client->getUsername() + " " + " :Cannot join channel (+i)\r\n";	
+				msg += _client->getUsername() + " " + _actual_chan->getName() + " :Cannot join channel (+i)\r\n";	
 				break;
 			}
-		case 474: //ERR_BANNEDFROMCHAN // A FINIR AVEC LES CHANS
+		case 474: //ERR_BANNEDFROMCHAN
 			{
-				msg += _client->getUsername() + " " + " :Cannot join channel (+b)\r\n";	
+				msg += _client->getUsername() + " " + _actual_chan->getName() + " :Cannot join channel (+b)\r\n";	
 				break;
 			}
-		case 475: //ERR_BADCHANNELKEY // A FINIR AVEC LES CHANS
+		case 475: //ERR_BADCHANNELKEY
 			{
-				msg += _client->getUsername() + " " + " :Cannot join channel (+k)\r\n";	
+				msg += _client->getUsername() + " " + _actual_chan->getName() + " :Cannot join channel (+k)\r\n";	
 				break;
 			}
-		case 476: //ERR_BADCHANMASK // A FINIR AVEC LES CHANS
+		case 476: //ERR_BADCHANMASK
 			{
-				msg += " :Bad Channel Mask\r\n";	
+				msg += _actual_chan->getName() + " :Bad Channel Mask\r\n";	
 				break;
 			}
 		case 482: //ERR_CHANOPRIVSNEEDED
