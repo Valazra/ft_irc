@@ -315,7 +315,7 @@ void	Command::user()
 	}
 	else if (!parsingRealname((*_cmd)[_actual_cmd][4]))
 	{
-		sendToClient(9999);
+		sendToClient(9999); //ERR_REALNAMERROR
 		return ;
 	}
 	else
