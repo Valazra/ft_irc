@@ -49,6 +49,7 @@ class Command
 		void sendToClient(int numeric_replies);
 		void sendToTarget(std::string target_name, int target_socket, bool is_notice);
 		int parsingNickname(std::string nickname);
+		int parsingRealname(std::string realname);
 		int checkNickname(std::string nickname);
 		bool check_if_valid_cmd(std::string cmd);
 		std::string insert_zeros(int nbr);

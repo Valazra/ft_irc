@@ -284,6 +284,13 @@ void	Command::nick()
 	}
 }
 
+int Command::parsingRealname(std::string realname)
+{
+	if (realname[0] != ':')
+		return (0);
+	return (1);
+}
+
 // USER
 void	Command::user()
 {
@@ -301,9 +308,14 @@ void	Command::user()
 		sendToClient(462); //ERR_ALREADYREGISTERED
 		return ;
 	}
-	else if ((*_cmd)[_actual_cmd].size() < 2)
+	else if ((*_cmd)[_actual_cmd].size() < 4)
 	{
 		sendToClient(461); //ERR_NEEDMOREPARAMS
+		return ;
+	}
+	else if (!parsingRealname((*_cmd)[_actual_cmd][4]))
+	{
+		sendToClient(9999);
 		return ;
 	}
 	else
@@ -694,6 +706,11 @@ void Command::sendToClient(int numeric_replies)
 		case 491: //ERR_NOOPERHOST
 			{
 				msg += _client->getUsername() + " :No O-lines for your host\r\n";	
+				break;
+			}
+		case 9999: //ERR_REALNAMEFORM
+			{
+				msg += ": Realname doesn't start with ':'\r\n";	
 				break;
 			}
 		default :
