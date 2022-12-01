@@ -64,7 +64,7 @@ void Command::execCmd()
 void Command::readCmd(int client_socket)
 {
 	_fatal_error = false;
-	_correctPass = false;
+//	_correctPass = false;
 	_client_socket = client_socket;
 	_client = (*_clients_ptr)[client_socket];
 	_cmd = _client->getCmd();
@@ -76,7 +76,6 @@ void Command::readCmd(int client_socket)
 			std::cout << "Command::readCmd TO_REGISTER" << std::endl;
 		execCmd();
 		(*_cmd).clear();
-		_client->setStatus(REGISTER);
 	}
 	else
 	{
@@ -206,7 +205,7 @@ void	Command::cap()
 void	Command::pass()
 {
 	if (DEBUG)
-		std::cout << "Command::pass | Pass attendu:" << _password << " | Pass recu = " << (*_cmd)[_actual_cmd][1] << std::endl;
+		std::cout << "Command::pass | Pass attendu = " << _password << " | Pass recu = " << (*_cmd)[_actual_cmd][1] << std::endl;
 	if (_client->getStatus() != 0)
 	{
 		sendToClient(462); //ERR_ALREADYREGISTERED
@@ -322,6 +321,7 @@ void	Command::user()
 			std::cout << "_client->getRealname() = " << _client->getRealname() << std::endl;
 		}*/
 	}
+	_client->setStatus(REGISTER);
 	sendToClient(1);
 	sendToClient(2);
 	sendToClient(3);
