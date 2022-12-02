@@ -22,6 +22,7 @@ class Channel
 		void setHasTopicOn();
 		void setHasTopicOff();
 		void addClient(Client *client);
+		void deleteClient(Client *client);
 
 	private:
 		Channel();

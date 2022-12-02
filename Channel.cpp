@@ -53,3 +53,15 @@ void Channel::addClient(Client *client)
 {
 	_list_clients.push_back(client);
 }
+
+void Channel::deleteClient(Client *client)
+{
+	for (std::vector<Client *>::iterator it = _list_clients.begin() ; it != _list_clients.end() ; ++it)
+	{
+		if ((*it) == client)
+		{
+			_list_clients.erase(it);
+			return ;
+		}
+	}
+}

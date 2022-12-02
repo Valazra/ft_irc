@@ -186,6 +186,7 @@ void	Command::topic()
 			//si le chan existe
 			if ((*it)->getName() == (*_cmd)[_actual_cmd][1])
 			{
+				_actual_chan = (*it);
 				std::vector<Client *> listClients = (*it)->getListClients();
 				//on parcoure tous les clients du chan
 				for(std::vector<Client *>::iterator it2 = listClients.begin() ; it2 != listClients.end() ; ++it2)
@@ -211,11 +212,10 @@ void	Command::topic()
 			}
 		}
 		//si on a pas trouvé le chan
-		std::cout << "yoloooooo" << std::endl;
 		sendToClient(403); //ERR_NOSUCHCHANNEL
 		return ;
 	}
-	else if ((*_cmd)[_actual_cmd].size() == 3)
+	else if ((*_cmd)[_actual_cmd].size() >= 3)
 	{
 		//on parcoure tous les chans
 		for (std::vector<Channel *>::iterator it3 = _all_channels.begin() ; it3 != _all_channels.end() ; ++it3)
@@ -223,6 +223,7 @@ void	Command::topic()
 			//si le chan existe
 			if ((*it3)->getName() == (*_cmd)[_actual_cmd][1])
 			{
+				_actual_chan = (*it3);
 				std::vector<Client *> listClients2 = (*it3)->getListClients();
 				//on parcoure tous les clients du chan
 				for(std::vector<Client *>::iterator it4 = listClients2.begin() ; it4 != listClients2.end() ; ++it4)
@@ -240,18 +241,18 @@ void	Command::topic()
 									topic += " ";
 								topic += *it5;
 							}
-							topic += "\r\n";
 							(*it3)->setTopic(topic);
 							(*it3)->setHasTopicOn();
 							std::string msg;
 							msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + "0" + " TOPIC " + _actual_chan->getName() + " :" + _actual_chan->getTopic() + "\r\n";
 							for (std::vector<Client *>::iterator it6 = listClients2.begin() ; it6 != listClients2.end() ; ++it6)
 							{
-							//	if ((*it6) != _client)
-									send((*it6)->getSock(), msg.c_str(), msg.size(), 0);
+								send((*it6)->getSock(), msg.c_str(), msg.size(), 0);
 								return ;
 							}
 						}
+						sendToClient(482); //ERR_CHANOPRIVSNEEDED
+						return ;
 					}
 				}
 				sendToClient(442); //ERR_NOTONCHANNEL
@@ -467,7 +468,14 @@ void	Command::join()
 				  send((*it2)->getSock(), msg.c_str(), msg.size(), 0); 
 				 */
 				//on envoie le message à tous les clients du chan (meme nous)
-				send((*it2)->getSock(), msg.c_str(), msg.size(), 0); 
+				send((*it2)->getSock(), msg.c_str(), msg.size(), 0);
+				if (it2 == listClientsChan.begin())
+				{
+					if ((*it)->getHasTopic() == true)
+						sendToClient(332); //RPL_TOPIC
+					else
+						sendToClient(331); //RPL_NOTOPIC
+				}
 			}
 			return ;
 		}
@@ -478,6 +486,7 @@ void	Command::join()
 	_client->addChannel(new_chan);
 	//on ajoute le nouveau chan à la liste _all_chans
 	_all_channels.push_back(new_chan);
+	_actual_chan = new_chan;
 
 	//POUR REGARDER CE QUI A UN RAPPORT AVEC LES CHANNELS
 	/*	for(std::vector<Channel *>::iterator it1 = _all_channels.begin() ; it1 != _all_channels.end() ; ++it1)
@@ -567,7 +576,7 @@ void	Command::quit()
 		std::cout << "Command::quit" << std::endl;
 	closeConnection(_client_socket);
 	//
-	//Enlever le client des chans dans lequel il est, fermer le chan si il etait seul
+	//Enlever le client des chans dans lequel il est, fermer le chan si il etait seul et enlever les chans de la liste des chans du client
 
 }
 
@@ -779,9 +788,9 @@ void Command::sendToClient(int numeric_replies)
 				msg += _client->getUsername() + " " + _server_name + " :No such server\r\n";
 				break;
 			}
-		case 403: //ERR_NOSUCHCHANNEL
+		case 403: //ERR_NOSUCHCHANNEL // ATTNTION A VERIF QUE SI ON APPELLE CETTE ERREUR, LE NOM DU CHAN EST TJR LE (cmd)[actualcmd][1]
 			{
-				msg += _client->getUsername() + " " + _actual_chan->getName() + " :No such channel\r\n";	
+				msg += _client->getUsername() + " " + (*_cmd)[_actual_cmd][1] + " :No such channel\r\n";
 				break;
 			}
 		case 404: //ERR_CANNOTSENDTOCHAN
