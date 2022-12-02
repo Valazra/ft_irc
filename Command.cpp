@@ -452,7 +452,7 @@ Channel *Command::findChan(std::string chan_name)
 void	Command::msgJoin(std::string chan_name, Channel *finded_chan)
 {
 	std::string msg;
-	msg = ":" + _client->getNickname() + " JOIN " + chan_name + "\r\n";
+	msg =":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " " + " JOIN " + chan_name + "\r\n";
 	std::vector<Client *> *listClientsChan = finded_chan->getListClients();
 	for (std::vector<Client *>::iterator it = listClientsChan->begin() ; it != listClientsChan->end() ; ++it)
 		send((*it)->getSock(), msg.c_str(), msg.size(), 0);
@@ -483,6 +483,7 @@ void	Command::join()
 	{
 		_client->addChannel(finded_chan);
 		(finded_chan)->addClient(_client); 
+		_actual_chan = finded_chan;
 		msgJoin(chan_name, finded_chan);
 	}
 }
@@ -491,7 +492,8 @@ void	Command::join()
 void Command::nameReply(std::string chan_name, Channel *chan)
 {
 	std::string msg;
-	msg = ":" + _client->getNickname() + " NAMES =" + chan_name + ":";
+	msg =":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " 353 ";
+	msg += _client->getUsername() + " = " + chan_name + " :";
 	for (std::vector<Client *>::iterator it = (chan->getListClients())->begin() ; it != (chan->getListClients())->end() ; ++it)
 	{
 		if ((*it)->getNickname() == (chan->getChannelOperator()->getNickname()))
@@ -503,6 +505,7 @@ void Command::nameReply(std::string chan_name, Channel *chan)
 	msg += "\r\n";
 	std::cout <<"NAME REPLY msg=" << msg << std::endl;
 	send(_client_socket, msg.c_str(), msg.size(), 0);
+	sendToClient(366); //RPL_ENDOFNAMES
 }
 
 // KICK
@@ -730,7 +733,7 @@ void Command::sendToClient(int numeric_replies)
 	if (numeric_replies >= 1 && numeric_replies <= 5)
 		msg = ":" + _server_name + " " + insert_zeros(numeric_replies) + to_string(numeric_replies) + " " + _client->getNickname() + " :";
 	else
-		msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " " + insert_zeros(numeric_replies) + to_string(numeric_replies) + " :";
+		msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " " + insert_zeros(numeric_replies) + to_string(numeric_replies) + " ";
 	switch (numeric_replies)
 	{
 		case 1: //RPL_WELCOME
@@ -773,6 +776,11 @@ void Command::sendToClient(int numeric_replies)
 				msg += _client->getUsername() + " " + _actual_chan->getName() + " :" + _actual_chan->getTopic() + "\r\n";
 				break;
 			}
+		case 366:
+		{
+			msg += _client->getUsername() + " " + _actual_chan->getName() + " :End of /NAMES list\r\n";	
+			break ;
+		}
 		case 381: //RPL_YOUREOPER
 			{
 				msg += _client->getUsername() + " :You are now an IRC operator\r\n";

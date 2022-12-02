@@ -60,7 +60,7 @@ class Client
 		void setOper(bool oper);
 		void addChannel(Channel *channel);
 		void leaveChannel(Channel *channel);
-		std::vector<Channel *> getClientChannels();
+		std::vector<Channel *>* getClientChannels();
 
 	private:
 		Client();

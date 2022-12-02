@@ -220,7 +220,7 @@ void Client::leaveChannel(Channel *channel)
 		}
 	}
 }
-std::vector<Channel *> Client::getClientChannels()
+std::vector<Channel *> *Client::getClientChannels()
 {
-	return (_client_channels);
+	return (&_client_channels);
 }
