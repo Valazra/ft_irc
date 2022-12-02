@@ -18,7 +18,7 @@ class Server;
 class Command
 {
 	public:
-		Command(std::map<int, Client *> *client_map, std::string password);
+		Command(std::map<int, Client *> *client_map, std::string password, bool *fatal_error);
 		~Command();
 		void readCmd(int client_socket);
 		void execCmd();
@@ -81,7 +81,7 @@ class Command
 		Channel *_actual_chan;
 		Channel *findChan(std::string chan_name);
 		//ERROR
-		bool _fatal_error;
+		bool *_fatal_error;
 		//Time
 		std::string _creationTime;
 		//Close

@@ -1,9 +1,8 @@
 #include "Server.hpp"
 
 Server::Server(std::string port, std::string password): 
-_port(port), _pass(password), _cmd(&_clients, password)
+_port(port), _pass(password), _fatal_error(false) ,_cmd(&_clients, password, &_fatal_error)
 {
-
 	int listened_sock;
 	// int socket(int domain, int type, int protocol);
 	// domain: PF_INET Protocoles Internet IPv4 ou PF_INET6 Protocoles Internet IPv6
@@ -101,7 +100,13 @@ void Server::run()
 					removeClient((*it).fd);
 				else if (_clients[(*it).fd]->getMsgFinish()) //le _msg_finish change dans client.receive()
 				{
+					_fatal_error = false;
 					_cmd.readCmd((*it).fd);
+					if (_fatal_error == true)
+					{
+						_fds.erase(it);
+						break ;
+					}
 				}
 			}
 		}

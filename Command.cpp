@@ -1,7 +1,7 @@
 #include "Command.hpp"
 
-Command::Command(std::map<int, Client *> *client_map, std::string password):
-	_clients_ptr(client_map), _password(password), _correctPass(false), _server_name("localhost"), _oper_name("coco"), _oper_pass("toto"),_fatal_error(0), _creationTime(getTime()) 
+Command::Command(std::map<int, Client *> *client_map, std::string password, bool *fatal_error):
+	_clients_ptr(client_map), _password(password), _correctPass(false), _server_name("localhost"), _oper_name("coco"), _oper_pass("toto"), _fatal_error(fatal_error), _creationTime(getTime()) 
 {
 	_cmd_list.push_back("MODE");
 	_cmd_list.push_back("OPER");
@@ -60,7 +60,7 @@ void Command::execCmd()
 			return ;
 		}
 		(this->*_cmd_availables[it->front()])();
-		if (_fatal_error)
+		if (*_fatal_error)
 			return ;
 		_actual_cmd++;
 	}
@@ -68,7 +68,7 @@ void Command::execCmd()
 
 void Command::readCmd(int client_socket)
 {
-	_fatal_error = false;
+	*_fatal_error = false;
 	_client_socket = client_socket;
 	_client = (*_clients_ptr)[client_socket];
 	_cmd = _client->getCmd();
@@ -244,7 +244,7 @@ void	Command::topic()
 							(*it3)->setTopic(topic);
 							(*it3)->setHasTopicOn();
 							std::string msg;
-							msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + "0" + " TOPIC " + _actual_chan->getName() + " :" + _actual_chan->getTopic() + "\r\n";
+							msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " TOPIC " + _actual_chan->getName() + " :" + _actual_chan->getTopic() + "\r\n";
 							for (std::vector<Client *>::iterator it6 = listClients2->begin() ; it6 != listClients2->end() ; ++it6)
 							{
 								send((*it6)->getSock(), msg.c_str(), msg.size(), 0);
@@ -376,7 +376,7 @@ void	Command::nick()
 		//	if (DEBUG)
 		//		std::cout << "old nick name = " << _client->getNickname() << std::endl;
 		std::string msg;
-		msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + "0" + " NICK " + (*_cmd)[_actual_cmd][1] + "\r\n";
+		msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " NICK " + (*_cmd)[_actual_cmd][1] + "\r\n";
 		send(_client_socket, msg.c_str(), msg.size(), 0);
 		_client->setNickname((*_cmd)[_actual_cmd][1]);
 		//	if (DEBUG)
@@ -456,7 +456,6 @@ void	Command::msgJoin(std::string chan_name, Channel *finded_chan)
 	std::vector<Client *> *listClientsChan = finded_chan->getListClients();
 	for (std::vector<Client *>::iterator it = listClientsChan->begin() ; it != listClientsChan->end() ; ++it)
 		send((*it)->getSock(), msg.c_str(), msg.size(), 0);
-	std::cout <<"JOIN REPLY msg=" << msg << std::endl;
 	if (finded_chan->getHasTopic() == true)
 		sendToClient(332); //RPL_TOPIC
 	nameReply(chan_name, finded_chan);
@@ -503,7 +502,6 @@ void Command::nameReply(std::string chan_name, Channel *chan)
 			msg += " ";
 	}
 	msg += "\r\n";
-	std::cout <<"NAME REPLY msg=" << msg << std::endl;
 	send(_client_socket, msg.c_str(), msg.size(), 0);
 	sendToClient(366); //RPL_ENDOFNAMES
 }
@@ -557,19 +555,21 @@ void Command::kill()
 		reason_of_kill += *it;
 	}
 	std::string msg;
-	msg = ":" + _client->getNickname() + " KILL " + (*_cmd)[_actual_cmd][1] + " :" + reason_of_kill + "\r\n";
+	msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name;
+	msg += " KILL " + (*_cmd)[_actual_cmd][1] + " :" + reason_of_kill + "\r\n";
 	send(socket_killed, msg.c_str(), msg.size(), 0);
 
-	msg = ":" + _client->getNickname() + " QUIT " + (*_cmd)[_actual_cmd][1] + " :";
+	msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name;
+	msg += " QUIT " + (*_cmd)[_actual_cmd][1] + " :";
 	msg += "Killed (" + _client->getNickname() + "(" + reason_of_kill + "))\r\n";
 	send(socket_killed, msg.c_str(), msg.size(), 0);
 
-	msg = ":" + _client->getNickname() + " " + "ERROR" + " :";
-	msg += "Closing Link: " + _server_name;
+	msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name;
+	msg += " ERROR :Closing Link: " + _server_name;
 	msg += "(Killed (" + _client->getNickname() + "(" + reason_of_kill + ")))\r\n";
 	send(socket_killed, msg.c_str(), msg.size(), 0);
 	closeConnection(socket_killed);
-	_fatal_error = true;
+	*_fatal_error = true;
 }
 
 // QUIT
@@ -579,7 +579,7 @@ void	Command::quit()
 		std::cout << "Command::quit" << std::endl;
 	std::string msg;
 	std::string reason;
-	msg = ":" + _client->getNickname() + " QUIT ";
+	msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " QUIT ";
 	if ((*_cmd)[_actual_cmd].size() == 2 && (*_cmd)[_actual_cmd][1] == ":leaving")
 	{
 		reason = "Quit: ";
@@ -640,7 +640,6 @@ void	Command::notice()
 	}
 	else //Client part
 	{
-		std::cout << "notice nice part" << std::endl;
 		for (std::map<int, Client *>::iterator it = (*_clients_ptr).begin() ; it != (*_clients_ptr).end() ; ++it)
 		{
 			if ((*it).second->getNickname() == target_name) 
@@ -709,9 +708,9 @@ void Command::sendToTarget(std::string target_name, int target_socket, bool is_n
 		std::cout << "target name puis target socket " << target_name << " "<< target_socket << std::endl;
 	std::string msg;
 	if (is_notice)
-		msg = ":" + _client->getNickname() + " NOTICE " + target_name + " " ;
+		msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " NOTICE " + target_name + " " ;
 	else
-		msg = ":" + _client->getNickname() + " PRIVMSG " + target_name + " " ;
+		msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " PRIVMSG " + target_name + " " ;
 	for(std::vector<std::string>::iterator it2 = (*_cmd)[_actual_cmd].begin() + 2 ; it2 != (*_cmd)[_actual_cmd].end() ; ++it2)
 	{
 		if (it2 != (*_cmd)[_actual_cmd].begin() + 2)
@@ -978,7 +977,7 @@ void Command::fatalError(std::string msg_error)
 	if (DEBUG)
 		std::cout << msg << std::endl;
 	send(_client_socket, msg.c_str(), msg.size(), 0);
-	_fatal_error = true;
+	*_fatal_error = true;
 	closeConnection(_client_socket);
 }
 

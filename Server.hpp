@@ -49,10 +49,10 @@ class Server
 
 		std::string	_port;
 		std::string	_pass;
+		bool _fatal_error;
 		Command _cmd;
 		std::vector<pollfd> _fds;
 		std::map<int, Client *> _clients;
-		time_t last_ping;
 };
 
 #endif
