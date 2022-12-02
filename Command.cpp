@@ -187,9 +187,9 @@ void	Command::topic()
 			if ((*it)->getName() == (*_cmd)[_actual_cmd][1])
 			{
 				_actual_chan = (*it);
-				std::vector<Client *> listClients = (*it)->getListClients();
+				std::vector<Client *> *listClients = (*it)->getListClients();
 				//on parcoure tous les clients du chan
-				for(std::vector<Client *>::iterator it2 = listClients.begin() ; it2 != listClients.end() ; ++it2)
+				for(std::vector<Client *>::iterator it2 = listClients->begin() ; it2 != listClients->end() ; ++it2)
 				{
 					//si le client est dans le chan
 					if ((*it2)->getNickname() == _client->getNickname())
@@ -224,9 +224,9 @@ void	Command::topic()
 			if ((*it3)->getName() == (*_cmd)[_actual_cmd][1])
 			{
 				_actual_chan = (*it3);
-				std::vector<Client *> listClients2 = (*it3)->getListClients();
+				std::vector<Client *> *listClients2 = (*it3)->getListClients();
 				//on parcoure tous les clients du chan
-				for(std::vector<Client *>::iterator it4 = listClients2.begin() ; it4 != listClients2.end() ; ++it4)
+				for(std::vector<Client *>::iterator it4 = listClients2->begin() ; it4 != listClients2->end() ; ++it4)
 				{
 					//si le client est dans le chan
 					if ((*it4)->getNickname() == _client->getNickname())
@@ -245,7 +245,7 @@ void	Command::topic()
 							(*it3)->setHasTopicOn();
 							std::string msg;
 							msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + "0" + " TOPIC " + _actual_chan->getName() + " :" + _actual_chan->getTopic() + "\r\n";
-							for (std::vector<Client *>::iterator it6 = listClients2.begin() ; it6 != listClients2.end() ; ++it6)
+							for (std::vector<Client *>::iterator it6 = listClients2->begin() ; it6 != listClients2->end() ; ++it6)
 							{
 								send((*it6)->getSock(), msg.c_str(), msg.size(), 0);
 								return ;
@@ -441,6 +441,27 @@ void	Command::user()
 }
 
 // JOIN
+Channel *Command::findChan(std::string chan_name)
+{
+	for (std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
+		if ((*it)->getName() == chan_name)
+			return (*it);
+	return (NULL);
+}
+
+void	Command::msgJoin(std::string chan_name, Channel *finded_chan)
+{
+	std::string msg;
+	msg = ":" + _client->getNickname() + " JOIN " + chan_name + "\r\n";
+	std::vector<Client *> *listClientsChan = finded_chan->getListClients();
+	for (std::vector<Client *>::iterator it = listClientsChan->begin() ; it != listClientsChan->end() ; ++it)
+		send((*it)->getSock(), msg.c_str(), msg.size(), 0);
+	std::cout <<"JOIN REPLY msg=" << msg << std::endl;
+	if (finded_chan->getHasTopic() == true)
+		sendToClient(332); //RPL_TOPIC
+	nameReply(chan_name, finded_chan);
+
+}
 void	Command::join()
 {
 	if ((*_cmd)[_actual_cmd].size() == 1)
@@ -448,61 +469,40 @@ void	Command::join()
 		sendToClient(461); //ERR_NEEDMOREPARAMS
 		return ;
 	}
-	//on parcoure tous les chans
-	for (std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
+	std::string chan_name = (*_cmd)[_actual_cmd][1];
+	Channel *finded_chan = findChan(chan_name);
+	if (!finded_chan) //No chan We create it
 	{
-		//si le chan existe déjà
-		if ((*it)->getName() == (*_cmd)[_actual_cmd][1])
-		{
-			//on ajoute le chan au client et le client au chan et on quitte la commande
-			_client->addChannel(*it);
-			(*it)->addClient(_client); 
-			//on crée le msg de client qui join le chan
-			std::string msg;
-			msg = ":" + _client->getNickname() + " JOIN " + (*it)->getName() + "\r\n";
-			std::vector<Client *> listClientsChan = (*it)->getListClients();
-			for (std::vector<Client *>::iterator it2 = listClientsChan.begin() ; it2 != listClientsChan.end() ; ++it2)
-			{
-				/*on envoie le message aux autres clients du chan
-				  if ((*it2) != _client)
-				  send((*it2)->getSock(), msg.c_str(), msg.size(), 0); 
-				 */
-				//on envoie le message à tous les clients du chan (meme nous)
-				send((*it2)->getSock(), msg.c_str(), msg.size(), 0);
-				if (it2 == listClientsChan.begin())
-				{
-					if ((*it)->getHasTopic() == true)
-						sendToClient(332); //RPL_TOPIC
-					else
-						sendToClient(331); //RPL_NOTOPIC
-				}
-			}
-			return ;
-		}
+		Channel *new_chan = new Channel(chan_name, _client);
+		_client->addChannel(new_chan);
+		_all_channels.push_back(new_chan);
+		_actual_chan = new_chan;
+		msgJoin(chan_name, new_chan);
 	}
-	//si le chan existe pas : on le crée
-	Channel *new_chan = new Channel((*_cmd)[_actual_cmd][1], _client);
-	//on rajoute le chan dans la liste des chans du client	
-	_client->addChannel(new_chan);
-	//on ajoute le nouveau chan à la liste _all_chans
-	_all_channels.push_back(new_chan);
-	_actual_chan = new_chan;
+	else //Chan already exist
+	{
+		_client->addChannel(finded_chan);
+		(finded_chan)->addClient(_client); 
+		msgJoin(chan_name, finded_chan);
+	}
+}
 
-	//POUR REGARDER CE QUI A UN RAPPORT AVEC LES CHANNELS
-	/*	for(std::vector<Channel *>::iterator it1 = _all_channels.begin() ; it1 != _all_channels.end() ; ++it1)
-		{
-		std::cout << "_all_channels = " << (*it1)->getName() << std::endl;
-		}
-		std::vector<Channel *> chacha = (*_client).getClientChannels();
-		for(std::vector<Channel *>::iterator it2 = chacha.begin() ; it2 != chacha.end() ; ++it2)
-		{
-		std::cout << "_client->_client_channels = " << (*it2)->getName() << std::endl;
-		}
-		std::vector<Client *> clicli = new_chan->getListClients();
-		for(std::vector<Client *>::iterator it3 = clicli.begin() ; it3 != clicli.end() ; ++it3)
-		{
-		std::cout << "new_chan->list_clients = " << (*it3)->getNickname() << std::endl;
-		}*/
+// NAME REPLY
+void Command::nameReply(std::string chan_name, Channel *chan)
+{
+	std::string msg;
+	msg = ":" + _client->getNickname() + " NAMES =" + chan_name + ":";
+	for (std::vector<Client *>::iterator it = (chan->getListClients())->begin() ; it != (chan->getListClients())->end() ; ++it)
+	{
+		if ((*it)->getNickname() == (chan->getChannelOperator()->getNickname()))
+			msg += "@"; 
+		msg += (*it)->getNickname();
+		if ((it + 1) != chan->getListClients()->end()) 
+			msg += " ";
+	}
+	msg += "\r\n";
+	std::cout <<"NAME REPLY msg=" << msg << std::endl;
+	send(_client_socket, msg.c_str(), msg.size(), 0);
 }
 
 // KICK
@@ -702,8 +702,8 @@ void Command::sendToChannel(Channel *channel, bool is_notice)
 	msg += "\r\n";
 	if (DEBUG)
 		std::cout << "MSG ="<< msg << std::endl;
-	std::vector<Client *> clicli = (*channel).getListClients();
-	for (std::vector<Client *>::iterator it2 = clicli.begin() ; it2 != clicli.end() ; ++it2)
+	std::vector<Client *> *clicli = (*channel).getListClients();
+	for (std::vector<Client *>::iterator it2 = clicli->begin() ; it2 != clicli->end() ; ++it2)
 	{
 		if ((*it2) != _client)
 			send((*it2)->getSock(), msg.c_str(), msg.size(), 0);

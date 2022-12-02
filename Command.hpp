@@ -79,12 +79,17 @@ class Command
 		//Channels
 		std::vector<Channel *> _all_channels;
 		Channel *_actual_chan;
+		Channel *findChan(std::string chan_name);
 		//ERROR
 		bool _fatal_error;
 		//Time
 		std::string _creationTime;
 		//Close
 		void closeConnection(int close_socket);
+		//Name reply
+		void nameReply(std::string chan_name, Channel *chan);
+		//Join rply
+		void	msgJoin(std::string chan_name, Channel *finded_chan);
 };
 
 #endif

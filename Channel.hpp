@@ -14,7 +14,7 @@ class Channel
 		Channel(std::string name_chan, Client *client);
 		virtual ~Channel();
 		std::string getName();
-		std::vector<Client *> getListClients();
+		std::vector<Client *> *getListClients();
 		Client *getChannelOperator();
 		std::string getTopic();
 		void setTopic(std::string topic);
