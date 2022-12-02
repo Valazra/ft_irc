@@ -577,10 +577,46 @@ void	Command::quit()
 {
 	if (DEBUG)
 		std::cout << "Command::quit" << std::endl;
-	closeConnection(_client_socket);
-	//
-	//Enlever le client des chans dans lequel il est, fermer le chan si il etait seul et enlever les chans de la liste des chans du client
-
+	std::string msg;
+	std::string reason;
+	msg = ":" + _client->getNickname() + " QUIT ";
+	if ((*_cmd)[_actual_cmd].size() == 2 && (*_cmd)[_actual_cmd][1] == ":leaving")
+	{
+		reason = "Quit: ";
+		msg += reason;
+	}
+	else
+	{
+		reason = "Quit: ";
+		for(std::vector<std::string>::iterator it = (*_cmd)[_actual_cmd].begin() + 1 ; it != (*_cmd)[_actual_cmd].end() ; ++it)
+		{
+			if (it != (*_cmd)[_actual_cmd].begin() + 1)
+				reason += " ";
+			else
+			{
+				//on enleve les ":" devant la reason
+			}
+			reason += *it;
+		}
+		msg += reason;
+		msg += "\r\n";
+	}
+	msg += "\r\n";
+	std::cout << "msg = " << msg << std::endl;
+	//on parcoure tous les chans du client
+	for (std::vector<Channel *>::iterator it = (_client->getClientChannels())->begin() ; it != (_client->getClientChannels())->end() ; ++it)
+	{
+		//on parcoure tous les clients du chan
+		for(std::vector<Client *>::iterator it2 = ((*it)->getListClients())->begin() ; it2 != ((*it)->getListClients())->end() ; ++it2)
+		{
+			if ((*it2) != _client)
+				send((*it2)->getSock(), msg.c_str(), msg.size(), 0);
+		}
+	}
+	//mettre fatal eror a la place de close co
+	fatalError(msg);
+//	send(_client_socket, msg.c_str(), msg.size(), 0);
+//	closeConnection(_client_socket);
 }
 
 // NOTICE == SAME AS privmsg BUT NEVER SEND AUTOMATIC REPLY
@@ -777,10 +813,10 @@ void Command::sendToClient(int numeric_replies)
 				break;
 			}
 		case 366:
-		{
-			msg += _client->getUsername() + " " + _actual_chan->getName() + " :End of /NAMES list\r\n";	
-			break ;
-		}
+			{
+				msg += _client->getUsername() + " " + _actual_chan->getName() + " :End of /NAMES list\r\n";	
+				break ;
+			}
 		case 381: //RPL_YOUREOPER
 			{
 				msg += _client->getUsername() + " :You are now an IRC operator\r\n";
@@ -938,7 +974,7 @@ std::string Command::insert_zeros(int nbr)
 void Command::fatalError(std::string msg_error)
 {
 	std::string msg;
-	msg = ":" + _client->getNickname() + " " + "ERROR" + " :" + msg_error + "\r\n";
+	msg = ":" + _client->getNickname() + " " + "ERROR" + " " + msg_error + "\r\n";
 	if (DEBUG)
 		std::cout << msg << std::endl;
 	send(_client_socket, msg.c_str(), msg.size(), 0);
