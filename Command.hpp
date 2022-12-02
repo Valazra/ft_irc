@@ -43,6 +43,7 @@ class Command
 		void notice();
 		void kick();
 		void kill();
+		void topic();
 		void fatalError(std::string msg_error); //ERROR
 
 		//COMMANDS UTILS

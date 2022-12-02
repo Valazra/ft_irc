@@ -1,8 +1,7 @@
 #include "Channel.hpp"
 
-Channel::Channel(std::string name_chan, Client *client) : _name(name_chan), _list_clients()
+Channel::Channel(std::string name_chan, Client *client) : _name(name_chan), _list_clients(), _chan_operator(client), _has_topic(false)
 {
-	//on ajoute à la liste des clients de ce chan le client qui le crée
 	_list_clients.push_back(client);
 }
 
@@ -18,6 +17,36 @@ std::string Channel::getName()
 std::vector<Client *> Channel::getListClients()
 {
 	return (_list_clients);
+}
+
+Client *Channel::getChannelOperator()
+{
+	return (_chan_operator);
+}
+
+std::string Channel::getTopic()
+{
+	return (_topic);
+}
+
+void Channel::setTopic(std::string topic)
+{
+	_topic = topic;
+}
+
+bool Channel::getHasTopic()
+{
+	return (_has_topic);
+}
+
+void Channel::setHasTopicOn()
+{
+	_has_topic = true;
+}
+
+void Channel::setHasTopicOff()
+{
+	_has_topic = false;
 }
 
 void Channel::addClient(Client *client)

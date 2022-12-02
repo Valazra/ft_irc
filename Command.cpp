@@ -15,6 +15,7 @@ Command::Command(std::map<int, Client *> *client_map, std::string password):
 	_cmd_list.push_back("NOTICE");
 	_cmd_list.push_back("KILL");
 	_cmd_list.push_back("KICK");
+	_cmd_list.push_back("TOPIC");
 	_cmd_availables["MODE"] = &Command::mode;
 	_cmd_availables["OPER"] = &Command::oper;
 	_cmd_availables["CAP"] = &Command::cap;
@@ -27,6 +28,7 @@ Command::Command(std::map<int, Client *> *client_map, std::string password):
 	_cmd_availables["NOTICE"] = &Command::notice;
 	_cmd_availables["KILL"] = &Command::kill;
 	_cmd_availables["KICK"] = &Command::kick;
+	_cmd_availables["TOPIC"] = &Command::topic;
 }
 
 Command::~Command()
@@ -54,7 +56,7 @@ void Command::execCmd()
 			std::cout << "execCmd() this cmd:" << it->front() << std::endl;
 		if (!check_if_valid_cmd(it->front()))
 		{
-			sendToClient(421); //ERR_UNKNOWNCOMMAND TODO
+			sendToClient(421); //ERR_UNKNOWNCOMMAND
 			return ;
 		}
 		(this->*_cmd_availables[it->front()])();
@@ -111,20 +113,20 @@ void	Command::mode()
 				if ((*_cmd)[_actual_cmd].size() == 2)
 				{
 					sendToClient(324); //RPL_CHANNELMODEIS
-									   // On peut aussi envoyer la 329 pour donner la date de creation du chan mais osef, nn?
+					// On peut aussi envoyer la 329 pour donner la date de creation du chan mais osef, nn?
 					return ;
 				}
 				//user must have appropriate chan privilege to changes the mode
 				/*
-				if (rightsForThisChanAndThisMode(_client, mode))
-				{
-				
-				}
-				else
-				{
-					sendToClient(482); //ERR_CHANOPRIVSNEEDED
-				}
-				*/
+				   if (rightsForThisChanAndThisMode(_client, mode))
+				   {
+
+				   }
+				   else
+				   {
+				   sendToClient(482); //ERR_CHANOPRIVSNEEDED
+				   }
+				 */
 
 			}
 		}
@@ -163,6 +165,101 @@ void	Command::mode()
 		//mais on est quand meme sencer ajotuer celle qu'on connait
 		//et visiblement on peut recevoir en une commande plusieurs options genre + iw
 		//donc si on recoit + zzzzzzzzzziw faut ignorer les z rajouter iw et ensutie mettre l erreur pour les z???
+	}
+}
+
+// TOPIC
+void	Command::topic()
+{
+	if (DEBUG)
+		std::cout << "Command::topic" << std::endl;
+	if ((*_cmd)[_actual_cmd].size() == 1)
+	{
+		sendToClient(461); //ERR_NEEDMOREPARAMS
+		return ;
+	}
+	else if ((*_cmd)[_actual_cmd].size() == 2) //si 2 params faut que ce soit TOPIC et le nom d'un chan
+	{
+		//on parcoure tous les chans
+		for (std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
+		{
+			//si le chan existe
+			if ((*it)->getName() == (*_cmd)[_actual_cmd][1])
+			{
+				std::vector<Client *> listClients = (*it)->getListClients();
+				//on parcoure tous les clients du chan
+				for(std::vector<Client *>::iterator it2 = listClients.begin() ; it2 != listClients.end() ; ++it2)
+				{
+					//si le client est dans le chan
+					if ((*it2)->getNickname() == _client->getNickname())
+					{
+						if ((*it)->getHasTopic() == false)
+						{
+							sendToClient(331); //RPL_NOTOPIC
+							return ;
+						}
+						else
+						{
+							sendToClient(332); //RPL_TOPIC
+							return ;
+						}
+					}
+				}
+				//si le client est pas dans le chan
+				sendToClient(442); //ERR_NOTONCHANNEL
+				return ;
+			}
+		}
+		//si on a pas trouvé le chan
+		std::cout << "yoloooooo" << std::endl;
+		sendToClient(403); //ERR_NOSUCHCHANNEL
+		return ;
+	}
+	else if ((*_cmd)[_actual_cmd].size() == 3)
+	{
+		//on parcoure tous les chans
+		for (std::vector<Channel *>::iterator it3 = _all_channels.begin() ; it3 != _all_channels.end() ; ++it3)
+		{
+			//si le chan existe
+			if ((*it3)->getName() == (*_cmd)[_actual_cmd][1])
+			{
+				std::vector<Client *> listClients2 = (*it3)->getListClients();
+				//on parcoure tous les clients du chan
+				for(std::vector<Client *>::iterator it4 = listClients2.begin() ; it4 != listClients2.end() ; ++it4)
+				{
+					//si le client est dans le chan
+					if ((*it4)->getNickname() == _client->getNickname())
+					{
+						//on tcheck si le client est un operator du chan
+						if ((*it3)->getChannelOperator() == _client)
+						{
+							std::string topic;
+							for(std::vector<std::string>::iterator it5 = (*_cmd)[_actual_cmd].begin() + 2 ; it5 != (*_cmd)[_actual_cmd].end() ; ++it5)
+							{
+								if (it5 != (*_cmd)[_actual_cmd].begin() + 2)
+									topic += " ";
+								topic += *it5;
+							}
+							topic += "\r\n";
+							(*it3)->setTopic(topic);
+							(*it3)->setHasTopicOn();
+							std::string msg;
+							msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + "0" + " TOPIC " + _actual_chan->getName() + " :" + _actual_chan->getTopic() + "\r\n";
+							for (std::vector<Client *>::iterator it6 = listClients2.begin() ; it6 != listClients2.end() ; ++it6)
+							{
+							//	if ((*it6) != _client)
+									send((*it6)->getSock(), msg.c_str(), msg.size(), 0);
+								return ;
+							}
+						}
+					}
+				}
+				sendToClient(442); //ERR_NOTONCHANNEL
+				return ;
+			}
+		}
+		sendToClient(403); //ERR_NOSUCHCHANNEL
+		return ;
 	}
 }
 
@@ -275,14 +372,14 @@ void	Command::nick()
 	}
 	else
 	{
-	//	if (DEBUG)
-	//		std::cout << "old nick name = " << _client->getNickname() << std::endl;
+		//	if (DEBUG)
+		//		std::cout << "old nick name = " << _client->getNickname() << std::endl;
 		std::string msg;
 		msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + "0" + " NICK " + (*_cmd)[_actual_cmd][1] + "\r\n";
 		send(_client_socket, msg.c_str(), msg.size(), 0);
 		_client->setNickname((*_cmd)[_actual_cmd][1]);
-	//	if (DEBUG)
-	//		std::cout << "new nick name = " << _client->getNickname() << std::endl;
+		//	if (DEBUG)
+		//		std::cout << "new nick name = " << _client->getNickname() << std::endl;
 	}
 }
 
@@ -323,17 +420,17 @@ void	Command::user()
 	else
 	{ 
 		/*if (DEBUG)
-		{
-			std::cout << "_client->getUsername() = " << _client->getUsername() << std::endl;
-			std::cout << "_client->getRealname() = " << _client->getRealname() << std::endl;
-		}*/
+		  {
+		  std::cout << "_client->getUsername() = " << _client->getUsername() << std::endl;
+		  std::cout << "_client->getRealname() = " << _client->getRealname() << std::endl;
+		  }*/
 		_client->setUsername((*_cmd)[_actual_cmd][1]);
 		_client->setRealname((*_cmd)[_actual_cmd][4]);
-	/*	if (DEBUG)
-		{
+		/*	if (DEBUG)
+			{
 			std::cout << "_client->getUsername() = " << _client->getUsername() << std::endl;
 			std::cout << "_client->getRealname() = " << _client->getRealname() << std::endl;
-		}*/
+			}*/
 	}
 	_client->setStatus(REGISTER);
 	sendToClient(1);
@@ -366,9 +463,9 @@ void	Command::join()
 			for (std::vector<Client *>::iterator it2 = listClientsChan.begin() ; it2 != listClientsChan.end() ; ++it2)
 			{
 				/*on envoie le message aux autres clients du chan
-				if ((*it2) != _client)
-					send((*it2)->getSock(), msg.c_str(), msg.size(), 0); 
-				*/
+				  if ((*it2) != _client)
+				  send((*it2)->getSock(), msg.c_str(), msg.size(), 0); 
+				 */
 				//on envoie le message à tous les clients du chan (meme nous)
 				send((*it2)->getSock(), msg.c_str(), msg.size(), 0); 
 			}
@@ -407,7 +504,7 @@ void Command::kick()
 }
 // KILL
 /*
-    When a client is removed as the result of a KILL message, the server
+   When a client is removed as the result of a KILL message, the server
    SHOULD add the nickname to the list of unavailable nicknames in an
    attempt to avoid clients to reuse this name immediately which is
    usually the pattern of abusive behaviour often leading to useless
@@ -424,7 +521,7 @@ void Command::kill()
 	}
 	if (!(*_client).getOper())
 	{
-		sendToClient(481); //ERR_NOPRIVILEGES TODO
+		sendToClient(481); //ERR_NOPRIVILEGES
 		return ;
 	}
 	if (!checkNickname((*_cmd)[_actual_cmd][1]))
@@ -454,7 +551,7 @@ void Command::kill()
 	msg = ":" + _client->getNickname() + " QUIT " + (*_cmd)[_actual_cmd][1] + " :";
 	msg += "Killed (" + _client->getNickname() + "(" + reason_of_kill + "))\r\n";
 	send(socket_killed, msg.c_str(), msg.size(), 0);
-	
+
 	msg = ":" + _client->getNickname() + " " + "ERROR" + " :";
 	msg += "Closing Link: " + _server_name;
 	msg += "(Killed (" + _client->getNickname() + "(" + reason_of_kill + ")))\r\n";
@@ -471,20 +568,10 @@ void	Command::quit()
 	closeConnection(_client_socket);
 	//
 	//Enlever le client des chans dans lequel il est, fermer le chan si il etait seul
-	
+
 }
 
-/*
-void	Command::quit(std::string reason)
-{
-	if (DEBUG)
-		std::cout << "Command::quit" << std::endl;
-	//faudra bien tout libérer ici
-	//fatal_error
-	_client->setStatus(REMOVE_ME);
-}*/
-
-//NOTICE == SAME AS privmsg BUT NEVER SEND AUTOMATIC REPLY
+// NOTICE == SAME AS privmsg BUT NEVER SEND AUTOMATIC REPLY
 void	Command::notice()
 {
 	if (DEBUG)
@@ -616,14 +703,14 @@ void Command::sendToChannel(Channel *channel, bool is_notice)
 
 std::string Command::getTime()
 {
-    time_t     now = time(0);
-    struct tm  tstruct;
-    char       buf[80];
-    tstruct = *localtime(&now);
-    strftime(buf, sizeof(buf), "%Y-%m-%d.%X", &tstruct);
+	time_t     now = time(0);
+	struct tm  tstruct;
+	char       buf[80];
+	tstruct = *localtime(&now);
+	strftime(buf, sizeof(buf), "%Y-%m-%d.%X", &tstruct);
 	std::string return_s(buf);
 
-    return (return_s);
+	return (return_s);
 }
 
 //NUMERIC REPLIES
@@ -667,6 +754,16 @@ void Command::sendToClient(int numeric_replies)
 				msg += _client->getUsername() + _client->getOptions() + "\r\n";	
 				break ;
 			}
+		case 331: //RPL_NOTOPIC
+			{
+				msg += _client->getUsername() + " " + _actual_chan->getName() + " :No topic is set\r\n";
+				break;
+			}
+		case 332: //RPL_TOPIC
+			{
+				msg += _client->getUsername() + " " + _actual_chan->getName() + " :" + _actual_chan->getTopic() + "\r\n";
+				break;
+			}
 		case 381: //RPL_YOUREOPER
 			{
 				msg += _client->getUsername() + " :You are now an IRC operator\r\n";
@@ -707,6 +804,11 @@ void Command::sendToClient(int numeric_replies)
 				msg += " :No nickname given\r\n";	
 				break;
 			}
+		case 421: //ERR_UNKNOWNCOMMAND
+			{
+				msg += _client->getUsername() + " " + (*_cmd)[_actual_cmd][0] + " :Unknown command\r\n";
+				break;
+			}
 		case 432: //ERR_ERRONEUSNICKNAME
 			{
 				msg += _client->getUsername() + " " + _client->getNickname() + " :Erroneus nickname\r\n";	
@@ -720,6 +822,11 @@ void Command::sendToClient(int numeric_replies)
 		case 436: //ERR_NICKCOLLISION
 			{
 				msg += _client->getNickname() + " :Nickname collision KILL from " + _client->getUsername() + "@" + _client->getHostname() + "\r\n";	
+				break;
+			}
+		case 442: //ERR_NOTONCHANNEL
+			{
+				msg += _client->getUsername() + " " + _actual_chan->getName() + " :You're not on that channel\r\n";
 				break;
 			}
 		case 461: //ERR_NEEDMOREPARAMS
@@ -760,6 +867,11 @@ void Command::sendToClient(int numeric_replies)
 		case 476: //ERR_BADCHANMASK
 			{
 				msg += _actual_chan->getName() + " :Bad Channel Mask\r\n";	
+				break;
+			}
+		case 481: //ERR_NOPRIVILEGES
+			{
+				msg += _client->getUsername() + " :Permission Denied- You're not an IRC operator\r\n";
 				break;
 			}
 		case 482: //ERR_CHANOPRIVSNEEDED
