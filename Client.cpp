@@ -214,7 +214,7 @@ void Client::leaveChannel(Channel *channel)
 	{
 		if ((*it) == channel)
 		{
-//IL FAUT SUPPR DE LA LISTE DE TOUS LES CHANS AUSSI
+//IL FAUT SUPPR DE LA LISTE DE TOUS LES CHANS AUSSI SI C EST LE DERNIER CLIENT DU CHAN
 			_client_channels.erase(it);
 			return ;
 		}

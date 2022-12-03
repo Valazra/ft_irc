@@ -564,8 +564,13 @@ void Command::kick()
 								}
 								msg += "\r\n";
 								std::cout << "MSG KICK = " << msg << std::endl;
-								//ACTION POUR KICK (peut etre affiché des mess aux mecs kick aussi)
-								send((*it2)->getSock(), msg.c_str(), msg.size(), 0);
+								//on envoie le message à tous les gens du chan
+								for (std::vector<Client *>::iterator it5 = listClients->begin() ; it5 != listClients->end() ; ++it5)
+									send((*it5)->getSock(), msg.c_str(), msg.size(), 0);
+								//on supprime le client de la liste des clients du chan
+								(*it)->deleteClient(*it3);
+								//on supprime le chan de la liste des chans du client
+								(*it3)->leaveChannel(*it);
 								return ;
 							}
 							sendToClient(482); //ERR_CHANOPRIVSNEEDED
@@ -690,10 +695,8 @@ void	Command::quit()
 				send((*it2)->getSock(), msg.c_str(), msg.size(), 0);
 		}
 	}
-	//mettre fatal eror a la place de close co
+//SUPPR LE CHAN SI PLUS PERSONNE DEDANS
 	fatalError(msg);
-	//	send(_client_socket, msg.c_str(), msg.size(), 0);
-	//	closeConnection(_client_socket);
 }
 
 // NOTICE == SAME AS privmsg BUT NEVER SEND AUTOMATIC REPLY
