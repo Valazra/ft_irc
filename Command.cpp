@@ -201,7 +201,9 @@ void	Command::topic()
 						}
 						else
 						{
+	
 							sendToClient(332); //RPL_TOPIC
+							sendToClient(333); //RPL_TOPICWHOTIME
 							return ;
 						}
 					}
@@ -218,41 +220,49 @@ void	Command::topic()
 	else if ((*_cmd)[_actual_cmd].size() >= 3)
 	{
 		//on parcoure tous les chans
-		for (std::vector<Channel *>::iterator it3 = _all_channels.begin() ; it3 != _all_channels.end() ; ++it3)
+		for (std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
 		{
 			//si le chan existe
-			if ((*it3)->getName() == (*_cmd)[_actual_cmd][1])
+			if ((*it)->getName() == (*_cmd)[_actual_cmd][1])
 			{
-				_actual_chan = (*it3);
-				std::vector<Client *> *listClients2 = (*it3)->getListClients();
+				_actual_chan = (*it);
+				std::vector<Client *> *listClients2 = (*it)->getListClients();
 				//on parcoure tous les clients du chan
-				for(std::vector<Client *>::iterator it4 = listClients2->begin() ; it4 != listClients2->end() ; ++it4)
+				for(std::vector<Client *>::iterator it2 = listClients2->begin() ; it2 != listClients2->end() ; ++it2)
 				{
 					//si le client est dans le chan
-					if ((*it4)->getNickname() == _client->getNickname())
+					if ((*it2)->getNickname() == _client->getNickname())
 					{
-						//on tcheck si le client est un operator du chan
-						if ((*it3)->getChannelOperator() == _client)
+						std::string topic;
+						for(std::vector<std::string>::iterator it3 = (*_cmd)[_actual_cmd].begin() + 2 ; it3 != (*_cmd)[_actual_cmd].end() ; ++it3)
 						{
-							std::string topic;
-							for(std::vector<std::string>::iterator it5 = (*_cmd)[_actual_cmd].begin() + 2 ; it5 != (*_cmd)[_actual_cmd].end() ; ++it5)
+							if (it3 != (*_cmd)[_actual_cmd].begin() + 2)
+								topic += " ";
+							else
 							{
-								if (it5 != (*_cmd)[_actual_cmd].begin() + 2)
-									topic += " ";
-								topic += *it5;
+								std::string tmp;
+								tmp = (*it3);
+								tmp.erase(0,1);
+								(*it3) = tmp;
 							}
-							(*it3)->setTopic(topic);
-							(*it3)->setHasTopicOn();
-							std::string msg;
-							msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " TOPIC " + _actual_chan->getName() + " :" + _actual_chan->getTopic() + "\r\n";
-							for (std::vector<Client *>::iterator it6 = listClients2->begin() ; it6 != listClients2->end() ; ++it6)
-							{
-								send((*it6)->getSock(), msg.c_str(), msg.size(), 0);
-								return ;
-							}
+							topic += *it3;
 						}
-						sendToClient(482); //ERR_CHANOPRIVSNEEDED
+						if (topic == "\"\"")
+						{
+							(*it)->deleteTopic();
+							(*it)->setHasTopicOff();
+						}
+						else
+						{
+							(*it)->setTopic(topic);
+							(*it)->setHasTopicOn();
+						}
+						std::string msg;
+						msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " TOPIC " + _actual_chan->getName() + " :" + _actual_chan->getTopic() + "\r\n";
+						for (std::vector<Client *>::iterator it4 = listClients2->begin() ; it4 != listClients2->end() ; ++it4)
+							send((*it4)->getSock(), msg.c_str(), msg.size(), 0);
 						return ;
+
 					}
 				}
 				sendToClient(442); //ERR_NOTONCHANNEL
@@ -415,8 +425,7 @@ void	Command::user()
 	}
 	else if (!parsingRealname((*_cmd)[_actual_cmd][4]))
 	{
-		sendToClient(9999); //ERR_REALNAMERROR
-		return ;
+		return ; //pas de ":" devant le real name 
 	}
 	else
 	{ 
@@ -617,8 +626,8 @@ void	Command::quit()
 	}
 	//mettre fatal eror a la place de close co
 	fatalError(msg);
-//	send(_client_socket, msg.c_str(), msg.size(), 0);
-//	closeConnection(_client_socket);
+	//	send(_client_socket, msg.c_str(), msg.size(), 0);
+	//	closeConnection(_client_socket);
 }
 
 // NOTICE == SAME AS privmsg BUT NEVER SEND AUTOMATIC REPLY
@@ -813,6 +822,11 @@ void Command::sendToClient(int numeric_replies)
 				msg += _client->getUsername() + " " + _actual_chan->getName() + " :" + _actual_chan->getTopic() + "\r\n";
 				break;
 			}
+		case 333: //RPL_TOPICWHOTIME
+			{
+				msg += _client->getUsername() + " " + _actual_chan->getName() + " " + _client->getNickname() + " " + _actual_chan->getCreationTimeTopic() + "\r\n";
+				break;
+			}
 		case 366:
 			{
 				msg += _client->getUsername() + " " + _actual_chan->getName() + " :End of /NAMES list\r\n";	
@@ -936,11 +950,6 @@ void Command::sendToClient(int numeric_replies)
 		case 491: //ERR_NOOPERHOST
 			{
 				msg += _client->getUsername() + " :No O-lines for your host\r\n";	
-				break;
-			}
-		case 9999: //ERR_REALNAMEFORM
-			{
-				msg += ": Realname doesn't start with ':'\r\n";	
 				break;
 			}
 		default :

@@ -42,11 +42,23 @@ bool Channel::getHasTopic()
 void Channel::setHasTopicOn()
 {
 	_has_topic = true;
+	_creation_time_topic = getTime();
 }
 
 void Channel::setHasTopicOff()
 {
 	_has_topic = false;
+}
+
+void Channel::deleteTopic()
+{
+	_topic.clear();
+	_creation_time_topic.clear();
+}
+
+std::string Channel::getCreationTimeTopic()
+{
+	return (_creation_time_topic);
 }
 
 void Channel::addClient(Client *client)
@@ -65,3 +77,16 @@ void Channel::deleteClient(Client *client)
 		}
 	}
 }
+
+std::string Channel::getTime()
+{
+	time_t     now = time(0);
+	struct tm  tstruct;
+	char       buf[80];
+	tstruct = *localtime(&now);
+	strftime(buf, sizeof(buf), "%Y-%m-%d.%X", &tstruct);
+	std::string return_s(buf);
+
+	return (return_s);
+}
+

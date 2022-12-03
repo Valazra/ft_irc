@@ -21,8 +21,11 @@ class Channel
 		bool getHasTopic();
 		void setHasTopicOn();
 		void setHasTopicOff();
+		std::string getCreationTimeTopic();
+		void deleteTopic();
 		void addClient(Client *client);
 		void deleteClient(Client *client);
+		std::string getTime();
 
 	private:
 		Channel();
@@ -33,6 +36,7 @@ class Channel
 		Client *_chan_operator;
 		std::string _topic;
 		bool _has_topic;
+		std::string _creation_time_topic;
 };
 
 #endif
