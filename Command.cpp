@@ -579,7 +579,7 @@ void	Command::quit()
 		std::cout << "Command::quit" << std::endl;
 	std::string msg;
 	std::string reason;
-	msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " QUIT ";
+	msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " QUIT :";
 	if ((*_cmd)[_actual_cmd].size() == 2 && (*_cmd)[_actual_cmd][1] == ":leaving")
 	{
 		reason = "Quit: ";
@@ -587,19 +587,21 @@ void	Command::quit()
 	}
 	else
 	{
-		reason = "Quit: ";
+		reason = "Quit";
 		for(std::vector<std::string>::iterator it = (*_cmd)[_actual_cmd].begin() + 1 ; it != (*_cmd)[_actual_cmd].end() ; ++it)
 		{
 			if (it != (*_cmd)[_actual_cmd].begin() + 1)
 				reason += " ";
 			else
 			{
-				//on enleve les ":" devant la reason
+				std::string tmp;
+				tmp = (*it);
+				tmp.insert(1, " ");
+				(*it) = tmp;
 			}
 			reason += *it;
 		}
 		msg += reason;
-		msg += "\r\n";
 	}
 	msg += "\r\n";
 	std::cout << "msg = " << msg << std::endl;
