@@ -376,7 +376,7 @@ void	Command::nick()
 		sendToClient(433); //ERR_NICKNAMEINUSE
 		return ;
 	}
-	else if ((*_cmd)[_actual_cmd].size() != 2)
+	else if ((*_cmd)[_actual_cmd].size() == 1)
 	{
 		sendToClient(431); //ERR_NONICKNAMEGIVEN
 		return ;
@@ -516,11 +516,77 @@ void Command::nameReply(std::string chan_name, Channel *chan)
 }
 
 // KICK
+//gérer le cas où on se kick soi meme et gérer le cas ou on kick plusieurs targets en meme temps
 void Command::kick()
 {
 	if (DEBUG)
 		std::cout << "Command::kick" << std::endl;
+	if ((*_cmd)[_actual_cmd].size() < 3)
+	{
+		sendToClient(461); //ERR_NEEDMOREPARAMS
+		return ;
+	}
+	//on parcoure tous les chans
+	for (std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
+	{
+		//si le chan existe
+		if ((*it)->getName() == (*_cmd)[_actual_cmd][1])
+		{
+			_actual_chan = (*it);
+			std::vector<Client *> *listClients = (*it)->getListClients();
+			//on parcoure tous les clients du chan
+			for(std::vector<Client *>::iterator it2 = listClients->begin() ; it2 != listClients->end() ; ++it2)
+			{
+				//si le client est dans le chan
+				if ((*it2)->getNickname() == _client->getNickname())
+				{
+					//on reparcoure la liste des clients du chan
+					for(std::vector<Client *>::iterator it3 = listClients->begin() ; it3 != listClients->end() ; ++it3)
+					{
+						//si la target est dans le chan
+						if ((*it3)->getNickname() == (*_cmd)[_actual_cmd][2])
+						{
+							//on tcheck si le client est operator de chan
+							if ((*it)->getChannelOperator() == _client)
+							{
+								std::string msg;
+								msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " KICK " + _actual_chan->getName() + " " + (*it3)->getNickname();
+								//si une raison a été précisée 
+								if ((*_cmd)[_actual_cmd].size() > 3)
+								{
+									std::string reason;
+									for(std::vector<std::string>::iterator it4 = (*_cmd)[_actual_cmd].begin() + 3 ; it4 != (*_cmd)[_actual_cmd].end() ; ++it4)
+									{
+										reason += " ";
+										reason += (*it4);
+									}
+									msg += reason;	
+								}
+								msg += "\r\n";
+								std::cout << "MSG KICK = " << msg << std::endl;
+								//ACTION POUR KICK (peut etre affiché des mess aux mecs kick aussi)
+								send((*it2)->getSock(), msg.c_str(), msg.size(), 0);
+								return ;
+							}
+							sendToClient(482); //ERR_CHANOPRIVSNEEDED
+							return ;
+						}
+					}
+					//si la target n'est pas dans le chan
+					sendToClient(441); //ERR_USERNOTINCHANNEL
+					return ;
+				}
+			}
+			//si le client est pas dans le chan
+			sendToClient(442); //ERR_NOTONCHANNEL
+			return ;
+		}
+	}
+	//si le chan existe pas
+	sendToClient(403); //ERR_NOSUCHCHANNEL
+	return ;
 }
+
 // KILL
 /*
    When a client is removed as the result of a KILL message, the server
@@ -890,6 +956,11 @@ void Command::sendToClient(int numeric_replies)
 		case 436: //ERR_NICKCOLLISION
 			{
 				msg += _client->getNickname() + " :Nickname collision KILL from " + _client->getUsername() + "@" + _client->getHostname() + "\r\n";	
+				break;
+			}
+		case 441: //ERR_USERNOTINCHANNEL
+			{
+				msg += _client->getUsername() + " " + _client->getNickname() + " " + _actual_chan->getName() + " :They aren't on that channel\r\n";
 				break;
 			}
 		case 442: //ERR_NOTONCHANNEL
