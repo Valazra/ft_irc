@@ -46,6 +46,7 @@ class Command
 		void topic();
 		void invite();
 		void part();
+		void names();
 		void fatalError(std::string msg_error); //ERROR
 
 		//COMMANDS UTILS
@@ -57,6 +58,8 @@ class Command
 		bool check_if_valid_cmd(std::string cmd);
 		std::string insert_zeros(int nbr);
 		std::string getTime();
+		int nbCommas(std::string chans);
+		std::vector<std::string> splitCommas(std::string listchans);
 
 		//Channels helper
 		void sendToChannel(Channel *channel, bool is_notice);
@@ -82,7 +85,7 @@ class Command
 		std::vector<Channel *> _all_channels;
 		Channel *_actual_chan;
 		Channel *findChan(std::string chan_name);
-		bool _in_invite;
+		std::string _bad_chan_name;
 		//ERROR
 		bool *_fatal_error;
 		//Time
