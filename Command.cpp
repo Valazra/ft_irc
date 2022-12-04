@@ -236,9 +236,11 @@ void	Command::part()
 	int nb_commas = nbCommas((*_cmd)[_actual_cmd][1]);
 	if (nb_commas)
 	{
+		int do_error = 1;
 		std::vector<std::string> vect_chan = splitCommas((*_cmd)[_actual_cmd][1]);
 		for (std::vector<std::string>::iterator it = vect_chan.begin() ; it != vect_chan.end() ; ++it)
 		{
+			do_error = 1;
 			//on parcoure tous les chans
 			for (std::vector<Channel *>::iterator it2 = _all_channels.begin() ; it2 != _all_channels.end() ; ++it2)
 			{
@@ -271,18 +273,26 @@ void	Command::part()
 							std::cout << "MSG = " << msg << std::endl;
 							for (std::vector<Client *>::iterator it4 = listClients->begin() ; it4 != listClients->end() ; ++it4)
 								send((*it4)->getSock(), msg.c_str(), msg.size(), 0);
-							send(_client->getSock(), msg.c_str(), msg.size(), 0);	
-							return ;
+							send(_client->getSock(), msg.c_str(), msg.size(), 0);
+							do_error = 0;
+							break ;
 						}
 					}
 					//si le client est pas dans le chan
-					sendToClient(442); //ERR_NOTONCHANNEL
-					return ;		
+					if (do_error)
+					{
+						sendToClient(442); //ERR_NOTONCHANNEL
+						do_error = 0;
+					}
 				}
 			}
 			//si on a pas trouvé le chan
-			_bad_chan_name = (*it);
-			sendToClient(403); //ERR_NOSUCHCHANNEL
+			if (do_error)
+			{
+				_bad_chan_name = (*it);
+				sendToClient(403); //ERR_NOSUCHCHANNEL
+				do_error = 0;
+			}
 		}
 	}
 	else
