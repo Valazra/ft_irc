@@ -45,6 +45,7 @@ class Command
 		void kill();
 		void topic();
 		void invite();
+		void part();
 		void fatalError(std::string msg_error); //ERROR
 
 		//COMMANDS UTILS

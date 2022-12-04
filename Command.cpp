@@ -17,6 +17,7 @@ Command::Command(std::map<int, Client *> *client_map, std::string password, bool
 	_cmd_list.push_back("KICK");
 	_cmd_list.push_back("TOPIC");
 	_cmd_list.push_back("INVITE");
+	_cmd_list.push_back("PART");
 	_cmd_availables["MODE"] = &Command::mode;
 	_cmd_availables["OPER"] = &Command::oper;
 	_cmd_availables["CAP"] = &Command::cap;
@@ -31,6 +32,7 @@ Command::Command(std::map<int, Client *> *client_map, std::string password, bool
 	_cmd_availables["KICK"] = &Command::kick;
 	_cmd_availables["TOPIC"] = &Command::topic;
 	_cmd_availables["INVITE"] = &Command::invite;
+	_cmd_availables["PART"] = &Command::part;
 }
 
 Command::~Command()
@@ -172,6 +174,62 @@ void	Command::mode()
 	}
 }
 
+// PART
+void	Command::part()
+{
+	if (DEBUG)
+		std::cout << "Command::part" << std::endl;
+	if ((*_cmd)[_actual_cmd].size() == 1)
+	{
+		sendToClient(461); //ERR_NEEDMOREPARAMS
+		return ;
+	}
+	//on parcoure tous les chans
+	for (std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
+	{
+		//si le chan existe
+		if ((*it)->getName() == (*_cmd)[_actual_cmd][1])
+		{
+			_actual_chan = (*it);
+			std::vector<Client *> *listClients = (*it)->getListClients();
+			//on parcoure tous les clients du chan
+			for(std::vector<Client *>::iterator it2 = listClients->begin() ; it2 != listClients->end() ; ++it2)
+			{
+				//si le client est dans le chan
+				if ((*it2)->getNickname() == _client->getNickname())
+				{
+					_client->leaveChannel(*it);
+					(*it)->deleteClient(*it2);	
+					std::string msg;
+					msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " PART " + _actual_chan->getName();
+					if ((*_cmd)[_actual_cmd].size() > 2)
+					{
+						std::string reason;
+						for(std::vector<std::string>::iterator it3 = (*_cmd)[_actual_cmd].begin() + 2 ; it3 != (*_cmd)[_actual_cmd].end() ; ++it3)
+						{
+							reason += " ";
+							reason += *it3;
+						}
+						msg += reason;
+					}
+					msg += "\r\n";
+					std::cout << "MSG = " << msg << std::endl;
+					for (std::vector<Client *>::iterator it3 = listClients->begin() ; it3 != listClients->end() ; ++it3)
+						send((*it3)->getSock(), msg.c_str(), msg.size(), 0);
+					send(_client->getSock(), msg.c_str(), msg.size(), 0);	
+					return ;
+				}
+			}
+			//si le client est pas dans le chan
+			sendToClient(442); //ERR_NOTONCHANNEL
+			return ;		
+		}
+	}
+	//si on a pas trouvé le chan
+	sendToClient(403); //ERR_NOSUCHCHANNEL
+	return ;	
+}
+
 // INVITE
 void	Command::invite()
 {
@@ -216,6 +274,7 @@ void	Command::invite()
 						{
 							std::string msg;
 							msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " INVITE " + (*_cmd)[_actual_cmd][1] + " " + _actual_chan->getName() + "\r\n";
+							std::cout << "MSG = " << msg << std::endl;
 							send((*it3).first, msg.c_str(), msg.size(), 0);	
 							//message a l'emmeteur de la cmd
 							sendToClient(341); //RPL_INVITING
