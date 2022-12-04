@@ -44,6 +44,7 @@ class Command
 		void kick();
 		void kill();
 		void topic();
+		void invite();
 		void fatalError(std::string msg_error); //ERROR
 
 		//COMMANDS UTILS
@@ -80,6 +81,7 @@ class Command
 		std::vector<Channel *> _all_channels;
 		Channel *_actual_chan;
 		Channel *findChan(std::string chan_name);
+		bool _in_invite;
 		//ERROR
 		bool *_fatal_error;
 		//Time

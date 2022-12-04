@@ -1,7 +1,7 @@
 #include "Command.hpp"
 
 Command::Command(std::map<int, Client *> *client_map, std::string password, bool *fatal_error):
-	_clients_ptr(client_map), _password(password), _correctPass(false), _server_name("localhost"), _oper_name("coco"), _oper_pass("toto"), _fatal_error(fatal_error), _creationTime(getTime()) 
+	_clients_ptr(client_map), _password(password), _correctPass(false), _server_name("localhost"), _oper_name("coco"), _oper_pass("toto"), _in_invite(false), _fatal_error(fatal_error), _creationTime(getTime()) 
 {
 	_cmd_list.push_back("MODE");
 	_cmd_list.push_back("OPER");
@@ -16,6 +16,7 @@ Command::Command(std::map<int, Client *> *client_map, std::string password, bool
 	_cmd_list.push_back("KILL");
 	_cmd_list.push_back("KICK");
 	_cmd_list.push_back("TOPIC");
+	_cmd_list.push_back("INVITE");
 	_cmd_availables["MODE"] = &Command::mode;
 	_cmd_availables["OPER"] = &Command::oper;
 	_cmd_availables["CAP"] = &Command::cap;
@@ -29,6 +30,7 @@ Command::Command(std::map<int, Client *> *client_map, std::string password, bool
 	_cmd_availables["KILL"] = &Command::kill;
 	_cmd_availables["KICK"] = &Command::kick;
 	_cmd_availables["TOPIC"] = &Command::topic;
+	_cmd_availables["INVITE"] = &Command::invite;
 }
 
 Command::~Command()
@@ -54,6 +56,7 @@ void Command::execCmd()
 			return ;
 		if (DEBUG)
 			std::cout << "execCmd() this cmd:" << it->front() << std::endl;
+		_in_invite = false;
 		if (!check_if_valid_cmd(it->front()))
 		{
 			sendToClient(421); //ERR_UNKNOWNCOMMAND
@@ -102,6 +105,7 @@ void	Command::mode()
 		return ;
 	}
 	std::string target_name = (*_cmd)[_actual_cmd][1];
+	_cmd_availables["TOPIC"] = &Command::topic;
 	if ((*_cmd)[_actual_cmd][1][0] == '#')
 	{
 		//Channel part
@@ -166,6 +170,71 @@ void	Command::mode()
 		//et visiblement on peut recevoir en une commande plusieurs options genre + iw
 		//donc si on recoit + zzzzzzzzzziw faut ignorer les z rajouter iw et ensutie mettre l erreur pour les z???
 	}
+}
+
+// INVITE
+void	Command::invite()
+{
+	if (DEBUG)
+		std::cout << "Command::invite" << std::endl;
+	_in_invite = true;
+	if ((*_cmd)[_actual_cmd].size() != 3)
+	{
+		sendToClient(461); //ERR_NEEDMOREPARAMS
+		return ;
+	}
+	//on parcoure tous les chans
+	for (std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
+	{
+		//si le chan existe
+		if ((*it)->getName() == (*_cmd)[_actual_cmd][2])
+		{
+			_actual_chan = (*it);
+			std::vector<Client *> *listClients = (*it)->getListClients();
+			//on parcoure tous les clients du chan
+			for(std::vector<Client *>::iterator it2 = listClients->begin() ; it2 != listClients->end() ; ++it2)
+			{
+				//si le client est dans le chan
+				if ((*it2)->getNickname() == _client->getNickname())
+				{
+//VOIR SI ON MET LES CHANNELS INVITE-ONLY MODE
+					//on reparcoure la liste des clients
+					for(std::vector<Client *>::iterator it3 = listClients->begin() ; it3 != listClients->end() ; ++it3)
+					{	//si la target est déja dans le chan
+						if ((*it3)->getNickname() == (*_cmd)[_actual_cmd][1])
+						{
+							//si la target est déja dans le chan
+							sendToClient(443); //ERR_USERONCHANNEL
+							return ;
+						}
+					}
+					//on tcheck si la target existe
+					for (std::map<int, Client *>::iterator it3 = (*_clients_ptr).begin() ; it3 != (*_clients_ptr).end() ; ++it3)
+					{
+						//SI OUI : message à la target
+						if ((*it3).second->getNickname() == (*_cmd)[_actual_cmd][1])
+						{
+							std::string msg;
+							msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " INVITE " + (*_cmd)[_actual_cmd][1] + " " + _actual_chan->getName() + "\r\n";
+							send((*it3).first, msg.c_str(), msg.size(), 0);	
+							//message a l'emmeteur de la cmd
+							sendToClient(341); //RPL_INVITING
+							return ;
+						}
+					}
+					//SI NON : ne fait rien
+					std::cout << "on fait rien car la target existe pas" << std::endl;
+					return ;
+				}
+			}
+			//si le client est pas dans le chan
+			sendToClient(442); //ERR_NOTONCHANNEL
+			return ;		
+		}
+	}
+	//si on a pas trouvé le chan
+	sendToClient(403); //ERR_NOSUCHCHANNEL
+	return ;	
 }
 
 // TOPIC
@@ -896,6 +965,11 @@ void Command::sendToClient(int numeric_replies)
 				msg += _client->getUsername() + " " + _actual_chan->getName() + " " + _client->getNickname() + " " + _actual_chan->getCreationTimeTopic() + "\r\n";
 				break;
 			}
+		case 341: //RPL_INVITING
+			{
+				msg += _client->getUsername() + " " + (*_cmd)[_actual_cmd][1] + " " + _actual_chan->getName() + "\r\n";
+				break;
+			}
 		case 366:
 			{
 				msg += _client->getUsername() + " " + _actual_chan->getName() + " :End of /NAMES list\r\n";	
@@ -916,9 +990,12 @@ void Command::sendToClient(int numeric_replies)
 				msg += _client->getUsername() + " " + _server_name + " :No such server\r\n";
 				break;
 			}
-		case 403: //ERR_NOSUCHCHANNEL // ATTNTION A VERIF QUE SI ON APPELLE CETTE ERREUR, LE NOM DU CHAN EST TJR LE (cmd)[actualcmd][1]
+		case 403: //ERR_NOSUCHCHANNEL
 			{
-				msg += _client->getUsername() + " " + (*_cmd)[_actual_cmd][1] + " :No such channel\r\n";
+				if (_in_invite == true)
+					msg += _client->getUsername() + " " + (*_cmd)[_actual_cmd][2] + " :No such channel\r\n";
+				else
+					msg += _client->getUsername() + " " + (*_cmd)[_actual_cmd][1] + " :No such channel\r\n";
 				break;
 			}
 		case 404: //ERR_CANNOTSENDTOCHAN
@@ -969,6 +1046,11 @@ void Command::sendToClient(int numeric_replies)
 		case 442: //ERR_NOTONCHANNEL
 			{
 				msg += _client->getUsername() + " " + _actual_chan->getName() + " :You're not on that channel\r\n";
+				break;
+			}
+		case 443: //ERR_USERONCHANNEL
+			{
+				msg += _client->getUsername() + " " + _client->getNickname() + " " + _actual_chan->getName() + " :is already on channel\r\n";
 				break;
 			}
 		case 461: //ERR_NEEDMOREPARAMS
