@@ -228,11 +228,11 @@ void	Command::part()
 	int nb_commas = nbCommas((*_cmd)[_actual_cmd][1]);
 	if (nb_commas)
 	{
-		int do_error = 1;
+		bool do_error = 1;
 		std::vector<std::string> vect_chan = splitCommas((*_cmd)[_actual_cmd][1]);
 		for (std::vector<std::string>::iterator it = vect_chan.begin() ; it != vect_chan.end() ; ++it)
 		{
-			do_error = 1;
+			do_error = true;
 			//on parcoure tous les chans
 			for (std::vector<Channel *>::iterator it2 = _all_channels.begin() ; it2 != _all_channels.end() ; ++it2)
 			{
@@ -266,7 +266,7 @@ void	Command::part()
 							for (std::vector<Client *>::iterator it4 = listClients->begin() ; it4 != listClients->end() ; ++it4)
 								send((*it4)->getSock(), msg.c_str(), msg.size(), 0);
 							send(_client->getSock(), msg.c_str(), msg.size(), 0);
-							do_error = 0;
+							do_error = false;
 							break ;
 						}
 					}
@@ -274,7 +274,7 @@ void	Command::part()
 					if (do_error)
 					{
 						sendToClient(442); //ERR_NOTONCHANNEL
-						do_error = 0;
+						do_error = false;
 					}
 				}
 			}
@@ -283,7 +283,7 @@ void	Command::part()
 			{
 				_bad_chan_name = (*it);
 				sendToClient(403); //ERR_NOSUCHCHANNEL
-				do_error = 0;
+				do_error = false;
 			}
 		}
 	}
@@ -361,7 +361,6 @@ void	Command::invite()
 				//si le client est dans le chan
 				if ((*it2)->getNickname() == _client->getNickname())
 				{
-					//VOIR SI ON MET LES CHANNELS INVITE-ONLY MODE
 					//on reparcoure la liste des clients
 					for(std::vector<Client *>::iterator it3 = listClients->begin() ; it3 != listClients->end() ; ++it3)
 					{	//si la target est déja dans le chan
@@ -388,7 +387,7 @@ void	Command::invite()
 						}
 					}
 					//SI NON : ne fait rien
-					std::cout << "on fait rien car la target existe pas" << std::endl;
+					sendToClient(401); //ERR_NOSUCHNICK
 					return ;
 				}
 			}
@@ -580,6 +579,8 @@ int Command::parsingNickname(std::string nickname)
 {
 	//find renvoie npos si aucune occurence n'a été trouvée, sinon ça renvoie l'endroit ou l'occurence à été trouvée
 	std::string forbidden(" ,*?!@.");
+	if (nickname.size() > 10)
+		return (0);
 	if (nickname[0] == '$' || nickname[0] == ':' || forbidden.find(nickname[0], 0) != std::string::npos)
 		return (0);
 	for (std::string::iterator it = nickname.begin() + 1 ; it != nickname.end() ; it++)
@@ -604,7 +605,7 @@ void	Command::nick()
 {
 	if (DEBUG)
 		std::cout << "Command::nick" << std::endl;
-	if (!parsingNickname((*_cmd)[_actual_cmd][1]))
+	if (!parsingNickname((*_cmd)[_actual_cmd][1]) || (*_cmd)[_actual_cmd].size() > 2)
 	{
 		sendToClient(432); //ERR_ERRONEUSNICKNAME
 		return ;
@@ -712,44 +713,22 @@ void	Command::names()
 		std::cout << "Command::names" << std::endl;
 	std::string chan_name;
 	Channel *finded_chan;
-	int nb_commas = nbCommas((*_cmd)[_actual_cmd][1]);
-	if (nb_commas)
+	std::vector<std::string> vect_chan = splitCommas((*_cmd)[_actual_cmd][1]);
+	for (std::vector<std::string>::iterator it = vect_chan.begin() ; it != vect_chan.end() ; ++it)
 	{
-		std::vector<std::string> vect_chan = splitCommas((*_cmd)[_actual_cmd][1]);
-		for (std::vector<std::string>::iterator it = vect_chan.begin() ; it != vect_chan.end() ; ++it)
-		{
-			_bad_chan_bool = false;
-			chan_name = (*it);
-			finded_chan = findChan(chan_name);
-			if (!finded_chan)
-			{
-				_bad_chan_bool = true;
-				_bad_chan_name = (*it);
-				sendToClient(366); //RPL_ENDOFNAMES;
-			}
-			else
-			{
-				_actual_chan = finded_chan;
-				nameReply(chan_name, finded_chan);
-			}
-		}
-	}
-	else
-	{
-		chan_name = (*_cmd)[_actual_cmd][1];
+		_bad_chan_bool = false;
+		chan_name = (*it);
 		finded_chan = findChan(chan_name);
 		if (!finded_chan)
 		{
 			_bad_chan_bool = true;
-			_bad_chan_name = (*_cmd)[_actual_cmd][1];
+			_bad_chan_name = (*it);
 			sendToClient(366); //RPL_ENDOFNAMES;
-			return ;
 		}
 		else
 		{
 			_actual_chan = finded_chan;
 			nameReply(chan_name, finded_chan);
-			return ;
 		}
 	}
 }
@@ -1179,7 +1158,7 @@ void Command::sendToClient(int numeric_replies)
 			}
 		case 5:
 			{
-				msg += "CHANTYPES=# CHANMODES=,,,, MODES=1 :are supported by this server\r\n";
+				msg += "TARGMAX=1 CHANTYPES=# CHANMODES=,,,, MODES=1 :are supported by this server\r\n";
 				break;
 			}
 		case 221: //RPL_UMODEIS
@@ -1232,7 +1211,7 @@ void Command::sendToClient(int numeric_replies)
 			}
 		case 403: //ERR_NOSUCHCHANNEL
 			{
-					msg += _client->getUsername() + " " + _bad_chan_name + " :No such channel\r\n";
+				msg += _client->getUsername() + " " + _bad_chan_name + " :No such channel\r\n";
 				break;
 			}
 		case 404: //ERR_CANNOTSENDTOCHAN
