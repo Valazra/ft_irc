@@ -610,7 +610,8 @@ int Command::checkNickname(std::string nickname)
 
 void	Command::nick()
 {
-	std::cout << "Command::nick" << std::endl;
+	if (DEBUG)
+		std::cout << "Command::nick" << std::endl;
 	if (!parsingNickname((*_cmd)[_actual_cmd][1]))
 	{
 		sendToClient(432); //ERR_ERRONEUSNICKNAME
@@ -628,14 +629,28 @@ void	Command::nick()
 	}
 	else
 	{
-		//	if (DEBUG)
-		//		std::cout << "old nick name = " << _client->getNickname() << std::endl;
 		std::string msg;
 		msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " NICK " + (*_cmd)[_actual_cmd][1] + "\r\n";
-		send(_client_socket, msg.c_str(), msg.size(), 0);
+		std::vector<int> has_been_send;
+		bool go_send;
+		for(std::vector<Channel *>::iterator it = (_client->getClientChannels())->begin(); it != (_client->getClientChannels())->end() ; ++it)
+		{
+			for(std::vector<Client *>::iterator it2 = ((*it)->getListClients())->begin(); it2 != ((*it)->getListClients())->end() ; ++it2)
+			{
+				go_send = 1;
+				for(std::vector<int>::iterator it3 = has_been_send.begin() ; it3 != has_been_send.end() ; ++it3)
+				{
+					if ((*it2)->getSock() == (*it3))
+						go_send = 0;
+				}
+				if (go_send)
+				{
+					send((*it2)->getSock(), msg.c_str(), msg.size(), 0);
+					has_been_send.push_back((*it2)->getSock());
+				}
+			}
+		}
 		_client->setNickname((*_cmd)[_actual_cmd][1]);
-		//	if (DEBUG)
-		//		std::cout << "new nick name = " << _client->getNickname() << std::endl;
 	}
 }
 
