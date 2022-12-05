@@ -1,7 +1,7 @@
 #include "Command.hpp"
 
 Command::Command(std::map<int, Client *> *client_map, std::string password, bool *fatal_error):
-	_clients_ptr(client_map), _password(password), _correctPass(false), _server_name("localhost"), _oper_name("coco"), _oper_pass("toto"), _bad_chan_name(), _fatal_error(fatal_error), _creationTime(getTime()) 
+	_clients_ptr(client_map), _password(password), _correctPass(false), _server_name("localhost"), _oper_name("coco"), _oper_pass("toto"), _bad_chan_name(), _bad_chan_bool(false), _fatal_error(fatal_error), _creationTime(getTime()) 
 {
 	_cmd_list.push_back("MODE");
 	_cmd_list.push_back("OPER");
@@ -60,6 +60,7 @@ void Command::execCmd()
 			return ;
 		if (DEBUG)
 			std::cout << "execCmd() this cmd:" << it->front() << std::endl;
+		_bad_chan_bool = false;
 		_bad_chan_name.clear();
 		if (!check_if_valid_cmd(it->front()))
 		{
@@ -176,15 +177,6 @@ void	Command::mode()
 		//donc si on recoit + zzzzzzzzzziw faut ignorer les z rajouter iw et ensutie mettre l erreur pour les z???
 	}
 }
-
-// NAMES
-void	Command::names()
-{
-	if (DEBUG)
-		std::cout << "Command::names" << std::endl;
-}
-
-
 
 int	Command::nbCommas(std::string chans)
 {
@@ -713,6 +705,55 @@ void	Command::user()
 	sendToClient(4);
 }
 
+// NAMES
+void	Command::names()
+{
+	if (DEBUG)
+		std::cout << "Command::names" << std::endl;
+	std::string chan_name;
+	Channel *finded_chan;
+	int nb_commas = nbCommas((*_cmd)[_actual_cmd][1]);
+	if (nb_commas)
+	{
+		std::vector<std::string> vect_chan = splitCommas((*_cmd)[_actual_cmd][1]);
+		for (std::vector<std::string>::iterator it = vect_chan.begin() ; it != vect_chan.end() ; ++it)
+		{
+			_bad_chan_bool = false;
+			chan_name = (*it);
+			finded_chan = findChan(chan_name);
+			if (!finded_chan)
+			{
+				_bad_chan_bool = true;
+				_bad_chan_name = (*it);
+				sendToClient(366); //RPL_ENDOFNAMES;
+			}
+			else
+			{
+				_actual_chan = finded_chan;
+				nameReply(chan_name, finded_chan);
+			}
+		}
+	}
+	else
+	{
+		chan_name = (*_cmd)[_actual_cmd][1];
+		finded_chan = findChan(chan_name);
+		if (!finded_chan)
+		{
+			_bad_chan_bool = true;
+			_bad_chan_name = (*_cmd)[_actual_cmd][1];
+			sendToClient(366); //RPL_ENDOFNAMES;
+			return ;
+		}
+		else
+		{
+			_actual_chan = finded_chan;
+			nameReply(chan_name, finded_chan);
+			return ;
+		}
+	}
+}
+
 // JOIN
 Channel *Command::findChan(std::string chan_name)
 {
@@ -1168,7 +1209,10 @@ void Command::sendToClient(int numeric_replies)
 			}
 		case 366:
 			{
-				msg += _client->getUsername() + " " + _actual_chan->getName() + " :End of /NAMES list\r\n";	
+				if (_bad_chan_bool)
+					msg += _client->getUsername() + " " + _bad_chan_name + " :End of /NAMES list\r\n";	
+				else
+					msg += _client->getUsername() + " " + _actual_chan->getName() + " :End of /NAMES list\r\n";	
 				break ;
 			}
 		case 381: //RPL_YOUREOPER

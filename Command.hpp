@@ -86,6 +86,7 @@ class Command
 		Channel *_actual_chan;
 		Channel *findChan(std::string chan_name);
 		std::string _bad_chan_name;
+		bool _bad_chan_bool;
 		//ERROR
 		bool *_fatal_error;
 		//Time
