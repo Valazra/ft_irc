@@ -53,6 +53,7 @@ class Server
 		Command _cmd;
 		std::vector<pollfd> _fds;
 		std::map<int, Client *> _clients;
+		std::vector<int> _sock_to_remove;
 };
 
 #endif

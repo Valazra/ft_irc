@@ -122,24 +122,13 @@ void	Command::mode()
 				if ((*_cmd)[_actual_cmd].size() == 2)
 				{
 					sendToClient(324); //RPL_CHANNELMODEIS
-					// On peut aussi envoyer la 329 pour donner la date de creation du chan mais osef, nn?
 					return ;
 				}
-				//user must have appropriate chan privilege to changes the mode
-				/*
-				   if (rightsForThisChanAndThisMode(_client, mode))
-				   {
-
-				   }
-				   else
-				   {
-				   sendToClient(482); //ERR_CHANOPRIVSNEEDED
-				   }
-				 */
-
+				sendToClient(477); //ERR_NOCHANMODES
+				return;
 			}
 		}
-		//mettre _bad_chan_name = 
+		_bad_chan_name = target_name; 
 		sendToClient(403); //ERR_NOSUCHCHANNEL
 
 	}
@@ -161,20 +150,16 @@ void	Command::mode()
 			sendToClient(221); //RPL_UMODEIS 
 			return ;
 		}
-		if ((*_cmd)[_actual_cmd][3] == "-")
+		if ((*_cmd)[_actual_cmd][2][0] == '-')
 		{
-			if ((*_cmd)[_actual_cmd].size() > 4 && (*_cmd)[_actual_cmd][4] == "o")
+			if ((*_cmd)[_actual_cmd][2].size() == 2 && (*_cmd)[_actual_cmd][2][1] == 'o')
 			{
 				(*_client).setOper(false);
-				//pas sur d'envoyer la 221 ici peut etre pas une numeric replies juste
-				//mettre les modes avec MODE en nomb de commande?
 				sendToClient(221); //RPL_UMODEIS 
+				return ;
 			}
 		}
-		//faut rajouter une erreur si on nous envoie une option de mode qu'on gere pas
-		//mais on est quand meme sencer ajotuer celle qu'on connait
-		//et visiblement on peut recevoir en une commande plusieurs options genre + iw
-		//donc si on recoit + zzzzzzzzzziw faut ignorer les z rajouter iw et ensutie mettre l erreur pour les z???
+		sendToClient(501); //ERR_UMODEUNKNOWNFLAG
 	}
 }
 
@@ -342,64 +327,52 @@ void	Command::invite()
 {
 	if (DEBUG)
 		std::cout << "Command::invite" << std::endl;
-	if ((*_cmd)[_actual_cmd].size() != 3)
+	if ((*_cmd)[_actual_cmd].size() != 3) //si on en a 6 on envoi need more params, c est fifou?
 	{
 		sendToClient(461); //ERR_NEEDMOREPARAMS
 		return ;
 	}
-	//on parcoure tous les chans
-	for (std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
+	std::string target_name = (*_cmd)[_actual_cmd][1];
+	std::string name = (*_cmd)[_actual_cmd][2];
+	Channel *finded_chan = findChan(name);
+	_bad_chan_name = name;
+	_actual_chan = finded_chan;
+	if (!finded_chan)
 	{
-		//si le chan existe
-		if ((*it)->getName() == (*_cmd)[_actual_cmd][2])
+		sendToClient(403); //ERR_NOSUCHCHANNEL
+		return ;
+	}
+	std::vector<Client *> *listClients = finded_chan->getListClients();
+	for (std::vector<Client *>::iterator it = listClients->begin() ; it != listClients->end() ; ++it)
+	{
+		if ((*it)->getNickname() == _client->getNickname())
 		{
-			_actual_chan = (*it);
-			std::vector<Client *> *listClients = (*it)->getListClients();
-			//on parcoure tous les clients du chan
-			for(std::vector<Client *>::iterator it2 = listClients->begin() ; it2 != listClients->end() ; ++it2)
+			for (std::vector<Client *>::iterator it1 = listClients->begin() ; it1 != listClients->end() ; ++it1)
 			{
-				//si le client est dans le chan
-				if ((*it2)->getNickname() == _client->getNickname())
+				if ((*it1)->getNickname() == target_name) //is already on chan?
 				{
-					//on reparcoure la liste des clients
-					for(std::vector<Client *>::iterator it3 = listClients->begin() ; it3 != listClients->end() ; ++it3)
-					{	//si la target est déja dans le chan
-						if ((*it3)->getNickname() == (*_cmd)[_actual_cmd][1])
-						{
-							//si la target est déja dans le chan
-							sendToClient(443); //ERR_USERONCHANNEL
-							return ;
-						}
-					}
-					//on tcheck si la target existe
-					for (std::map<int, Client *>::iterator it3 = (*_clients_ptr).begin() ; it3 != (*_clients_ptr).end() ; ++it3)
-					{
-						//SI OUI : message à la target
-						if ((*it3).second->getNickname() == (*_cmd)[_actual_cmd][1])
-						{
-							std::string msg;
-							msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " INVITE " + (*_cmd)[_actual_cmd][1] + " " + _actual_chan->getName() + "\r\n";
-							std::cout << "MSG = " << msg << std::endl;
-							send((*it3).first, msg.c_str(), msg.size(), 0);	
-							//message a l'emmeteur de la cmd
-							sendToClient(341); //RPL_INVITING
-							return ;
-						}
-					}
-					//SI NON : ne fait rien
-					sendToClient(401); //ERR_NOSUCHNICK
+					sendToClient(443); //ERR_USERONCHANNEL
 					return ;
 				}
 			}
-			//si le client est pas dans le chan
-			sendToClient(442); //ERR_NOTONCHANNEL
-			return ;		
+			for (std::map<int, Client *>::iterator it1 = (*_clients_ptr).begin() ; it1 != (*_clients_ptr).end() ; ++it1) 
+			{
+				if ((*it1).second->getNickname() == target_name) //is target existing?
+				{
+					std::string msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " INVITE " + target_name + " " + _actual_chan->getName() + "\r\n";
+					if (DEBUG)
+						std::cout << "MSG = " << msg << std::endl;
+					send((*it1).first, msg.c_str(), msg.size(), 0);	
+					sendToClient(341); //RPL_INVITING
+					return ;
+				}
+			}
+			sendToClient(401); //ERR_NOSUCHNICK
+			return ;
 		}
 	}
-	//si on a pas trouvé le chan
-	_bad_chan_name = (*_cmd)[_actual_cmd][2];
-	sendToClient(403); //ERR_NOSUCHCHANNEL
-	return ;	
+	sendToClient(442); //ERR_NOTONCHANNEL
+	return ;		
 }
 
 // TOPIC
@@ -412,100 +385,81 @@ void	Command::topic()
 		sendToClient(461); //ERR_NEEDMOREPARAMS
 		return ;
 	}
-	else if ((*_cmd)[_actual_cmd].size() == 2) //si 2 params faut que ce soit TOPIC et le nom d'un chan
+	std::string chan_name = (*_cmd)[_actual_cmd][1];
+	Channel *finded_chan = findChan(chan_name);
+	_bad_chan_name = (*_cmd)[_actual_cmd][1];
+	_actual_chan = finded_chan;
+	if ((*_cmd)[_actual_cmd].size() == 2) 
 	{
-		//on parcoure tous les chans
-		for (std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
+		if (!finded_chan)
 		{
-			//si le chan existe
-			if ((*it)->getName() == (*_cmd)[_actual_cmd][1])
+			sendToClient(403); //ERR_NOSUCHCHANNEL
+			return ;
+		}
+		std::vector<Client *> *listClients = finded_chan->getListClients();
+		for(std::vector<Client *>::iterator it2 = listClients->begin() ; it2 != listClients->end() ; ++it2)
+		{
+			if ((*it2)->getNickname() == _client->getNickname())
 			{
-				_actual_chan = (*it);
-				std::vector<Client *> *listClients = (*it)->getListClients();
-				//on parcoure tous les clients du chan
-				for(std::vector<Client *>::iterator it2 = listClients->begin() ; it2 != listClients->end() ; ++it2)
+				if (!(finded_chan->getHasTopic()))
 				{
-					//si le client est dans le chan
-					if ((*it2)->getNickname() == _client->getNickname())
-					{
-						if ((*it)->getHasTopic() == false)
-						{
-							sendToClient(331); //RPL_NOTOPIC
-							return ;
-						}
-						else
-						{
-
-							sendToClient(332); //RPL_TOPIC
-							sendToClient(333); //RPL_TOPICWHOTIME
-							return ;
-						}
-					}
+					sendToClient(331); //RPL_NOTOPIC
+					return ;
 				}
-				//si le client est pas dans le chan
-				sendToClient(442); //ERR_NOTONCHANNEL
-				return ;
+				else
+				{
+					sendToClient(332); //RPL_TOPIC
+					sendToClient(333); //RPL_TOPICWHOTIME
+					return ;
+				}
 			}
 		}
-		//si on a pas trouvé le chan
-		_bad_chan_name = (*_cmd)[_actual_cmd][1];
-		sendToClient(403); //ERR_NOSUCHCHANNEL
+		sendToClient(442); //ERR_NOTONCHANNEL
 		return ;
 	}
 	else if ((*_cmd)[_actual_cmd].size() >= 3)
 	{
-		//on parcoure tous les chans
-		for (std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
+		if (!finded_chan)
 		{
-			//si le chan existe
-			if ((*it)->getName() == (*_cmd)[_actual_cmd][1])
+			sendToClient(403); //ERR_NOSUCHCHANNEL
+			return ;
+		}
+		std::vector<Client *> *listClients2 = finded_chan->getListClients();
+		for (std::vector<Client *>::iterator it2 = listClients2->begin() ; it2 != listClients2->end() ; ++it2)
+		{
+			if ((*it2)->getNickname() == _client->getNickname())
 			{
-				_actual_chan = (*it);
-				std::vector<Client *> *listClients2 = (*it)->getListClients();
-				//on parcoure tous les clients du chan
-				for(std::vector<Client *>::iterator it2 = listClients2->begin() ; it2 != listClients2->end() ; ++it2)
+				std::string topic;
+				for(std::vector<std::string>::iterator it3 = (*_cmd)[_actual_cmd].begin() + 2 ; it3 != (*_cmd)[_actual_cmd].end() ; ++it3)
 				{
-					//si le client est dans le chan
-					if ((*it2)->getNickname() == _client->getNickname())
+					if (it3 != (*_cmd)[_actual_cmd].begin() + 2)
+						topic += " ";
+					else
 					{
-						std::string topic;
-						for(std::vector<std::string>::iterator it3 = (*_cmd)[_actual_cmd].begin() + 2 ; it3 != (*_cmd)[_actual_cmd].end() ; ++it3)
-						{
-							if (it3 != (*_cmd)[_actual_cmd].begin() + 2)
-								topic += " ";
-							else
-							{
-								std::string tmp;
-								tmp = (*it3);
-								tmp.erase(0,1);
-								(*it3) = tmp;
-							}
-							topic += *it3;
-						}
-						if (topic == "\"\"")
-						{
-							(*it)->deleteTopic();
-							(*it)->setHasTopicOff();
-						}
-						else
-						{
-							(*it)->setTopic(topic);
-							(*it)->setHasTopicOn();
-						}
-						std::string msg;
-						msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " TOPIC " + _actual_chan->getName() + " :" + _actual_chan->getTopic() + "\r\n";
-						for (std::vector<Client *>::iterator it4 = listClients2->begin() ; it4 != listClients2->end() ; ++it4)
-							send((*it4)->getSock(), msg.c_str(), msg.size(), 0);
-						return ;
-
+						std::string tmp;
+						tmp = (*it3);
+						tmp.erase(0,1);
+						(*it3) = tmp;
 					}
+					topic += *it3;
 				}
-				sendToClient(442); //ERR_NOTONCHANNEL
+				if (topic == "\"\"") // "" irssi send empty string
+				{
+					finded_chan->deleteTopic();
+					finded_chan->setHasTopicOff();
+				}
+				else
+				{
+					finded_chan->setTopic(topic);
+					finded_chan->setHasTopicOn();
+				}
+				std::string msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " TOPIC " + _actual_chan->getName() + " :" + _actual_chan->getTopic() + "\r\n";
+				for (std::vector<Client *>::iterator it4 = listClients2->begin() ; it4 != listClients2->end() ; ++it4)
+					send((*it4)->getSock(), msg.c_str(), msg.size(), 0);
 				return ;
 			}
 		}
-		_bad_chan_name = (*_cmd)[_actual_cmd][1];
-		sendToClient(403); //ERR_NOSUCHCHANNEL
+		sendToClient(442); //ERR_NOTONCHANNEL
 		return ;
 	}
 }
@@ -528,9 +482,8 @@ void	Command::oper()
 	if ((*_cmd)[_actual_cmd][1] == _oper_name && (*_cmd)[_actual_cmd][2] == _oper_pass)
 	{
 		_client->setOper(true);
-		sendToClient(381);
+		sendToClient(381); // 
 		sendToClient(221); //RPL_UMODEIS 
-		//mettre aussi un message de MODE (RPL_UMODEIS)
 		return ;
 	}
 	else
@@ -1166,6 +1119,11 @@ void Command::sendToClient(int numeric_replies)
 				msg += _client->getUsername() + _client->getOptions() + "\r\n";	
 				break ;
 			}
+		case 324: //RPL_CHANNELMODEIS
+			{
+				msg += _client->getUsername() + " " + _actual_chan->getName() + " \r\n"; //if modes are implements they are after chan name	
+				break ;
+			}
 		case 331: //RPL_NOTOPIC
 			{
 				msg += _client->getUsername() + " " + _actual_chan->getName() + " :No topic is set\r\n";
@@ -1309,6 +1267,11 @@ void Command::sendToClient(int numeric_replies)
 				msg += _actual_chan->getName() + " :Bad Channel Mask\r\n";	
 				break;
 			}
+		case 477: //ERR_NOCHANMODES
+			{
+				msg += _actual_chan->getName() + " :Channel doesn't support modes\r\n";	
+				break;
+			}
 		case 481: //ERR_NOPRIVILEGES
 			{
 				msg += _client->getUsername() + " :Permission Denied- You're not an IRC operator\r\n";
@@ -1324,9 +1287,19 @@ void Command::sendToClient(int numeric_replies)
 				msg += _client->getUsername() + " :No O-lines for your host\r\n";	
 				break;
 			}
+		case 501: //ERR_UMODEUNKNOWNFLAG
+			{
+				msg += _client->getUsername() + " :Unknown MODE flag\r\n";	
+				break;
+			}
+		case 502: //ERR_USERSDONTMATCH 
+			{
+				msg += _client->getUsername() + " :Cannot change mode for other users\r\n";	
+				break;
+			}
 		default :
 			{
-				msg = "ON EST DANS LE DEFAULT DE SENDTOCLIENT\r\n";
+				msg = "DEFAULT CASE\r\n";
 				break ;
 			}
 

@@ -1,7 +1,7 @@
 #include "Server.hpp"
 
 Server::Server(std::string port, std::string password): 
-_port(port), _pass(password), _fatal_error(false) ,_cmd(&_clients, password, &_fatal_error)
+_port(port), _pass(password), _fatal_error(false) ,_cmd(&_clients, password, &_fatal_error), _sock_to_remove()
 {
 	int listened_sock;
 	// int socket(int domain, int type, int protocol);
@@ -102,15 +102,23 @@ void Server::run()
 				{
 					_fatal_error = false;
 					_cmd.readCmd((*it).fd);
-					if (_fatal_error == true)
-					{
-						_fds.erase(it);
-						break ;
-					}
+				if (_fatal_error == true)
+					_sock_to_remove.push_back((*it).fd);
 				}
 			}
 		}
-	//supprimer les sockets des clients qu on a ferme dans _fds
+		for (std::vector<int>::iterator it = _sock_to_remove.begin(); it != _sock_to_remove.end(); ++it)
+		{
+			for (std::vector<pollfd>::iterator it1 = _fds.begin(); it1 != _fds.end(); ++it1)
+			{
+				if (*it == (*it1).fd)
+				{
+					_fds.erase(it1);
+					it1 = _fds.end() - 1;
+				}
+			}
+		}
+		_sock_to_remove.clear();
 	}
 }
 
