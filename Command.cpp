@@ -645,11 +645,15 @@ void	Command::nick()
 				}
 				if (go_send)
 				{
-					send((*it2)->getSock(), msg.c_str(), msg.size(), 0);
-					has_been_send.push_back((*it2)->getSock());
+					if ((*it2)->getSock() != _client->getSock())
+					{
+						send((*it2)->getSock(), msg.c_str(), msg.size(), 0);
+						has_been_send.push_back((*it2)->getSock());
+					}
 				}
 			}
 		}
+		send(_client->getSock(), msg.c_str(), msg.size(), 0);
 		_client->setNickname((*_cmd)[_actual_cmd][1]);
 	}
 }
