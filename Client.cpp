@@ -203,18 +203,15 @@ void Client::changeOptions(std::string options, bool add)
 
 void Client::addChannel(Channel *channel)
 {
-	std::cout << "CLIENT ADD_CHANNEL" << std::endl;
 	_client_channels.push_back(channel);
 }
 
 void Client::leaveChannel(Channel *channel)
 {
-	std::cout  << "CLIENT LEAVE_CHANNEL" << std::endl;
 	for (std::vector<Channel *>::iterator it = _client_channels.begin() ; it != _client_channels.end() ; ++it)
 	{
 		if ((*it) == channel)
 		{
-//IL FAUT SUPPR DE LA LISTE DE TOUS LES CHANS AUSSI SI C EST LE DERNIER CLIENT DU CHAN
 			_client_channels.erase(it);
 			return ;
 		}

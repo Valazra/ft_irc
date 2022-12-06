@@ -2,7 +2,6 @@
 
 Channel::Channel(std::string name_chan, Client *client) : _name(name_chan), _list_clients(1, client), _chan_operator(client), _has_topic(false)
 {
-//	_list_clients.push_back(client);
 }
 
 Channel::~Channel()
@@ -89,4 +88,3 @@ std::string Channel::getTime()
 
 	return (return_s);
 }
-

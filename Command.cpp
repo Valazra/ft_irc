@@ -114,7 +114,7 @@ void	Command::mode()
 	if ((*_cmd)[_actual_cmd][1][0] == '#')
 	{
 		//Channel part
-		for(std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
+		for(std::vector<Channel *>::iterator it = (_all_channels).begin() ; it != (_all_channels).end() ; ++it)
 		{
 			if ((*it)->getName() == target_name)
 			{
@@ -200,6 +200,31 @@ std::vector<std::string> Command::splitCommas(std::string listchans)
 	return (vect_chan);
 }
 
+std::vector<Channel *>::iterator Command::returnItChan(std::string chan_name)
+{
+	for(std::vector<Channel *>::iterator it = (_all_channels).begin() ; it != (_all_channels).end() ; ++it)
+	{
+		if ((*it)->getName() == chan_name)
+			return (it);
+	}
+	return (_all_channels.end());
+}
+
+void 	Command::checkIfEmptyChan()
+{
+	std::vector<Channel *> tmp;
+	for(std::vector<Channel *>::iterator it = (_all_channels).begin() ; it != (_all_channels).end() ; ++it)
+	{
+		if ((*it)->getListClients()->size() == 0)
+			tmp.push_back(*it);
+	}
+	for(std::vector<Channel *>::iterator it = tmp.begin() ; it != tmp.end() ; ++it)
+	{
+			(_all_channels).erase(returnItChan((*it)->getName()));
+			delete ((*it));
+	}
+}
+
 // PART
 void	Command::part()
 {
@@ -219,7 +244,7 @@ void	Command::part()
 		{
 			do_error = true;
 			//on parcoure tous les chans
-			for (std::vector<Channel *>::iterator it2 = _all_channels.begin() ; it2 != _all_channels.end() ; ++it2)
+			for (std::vector<Channel *>::iterator it2 = (_all_channels).begin() ; it2 != (_all_channels).end() ; ++it2)
 			{
 				//si le chan existe
 				if ((*it2)->getName() == (*it))
@@ -233,9 +258,10 @@ void	Command::part()
 						if ((*it3)->getNickname() == _client->getNickname())
 						{
 							_client->leaveChannel(*it2);
-							(*it2)->deleteClient(*it3);	
+							(*it2)->deleteClient(*it3);
+							checkIfEmptyChan();
 							std::string msg;
-							msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " PART " + _actual_chan->getName();
+							msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " PART " + (*_cmd)[_actual_cmd][1];
 							if ((*_cmd)[_actual_cmd].size() > 2)
 							{
 								std::string reason;
@@ -275,7 +301,7 @@ void	Command::part()
 	else
 	{
 		//on parcoure tous les chans
-		for (std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
+		for (std::vector<Channel *>::iterator it = (_all_channels).begin() ; it != (_all_channels).end() ; ++it)
 		{
 			//si le chan existe
 			if ((*it)->getName() == (*_cmd)[_actual_cmd][1])
@@ -289,9 +315,10 @@ void	Command::part()
 					if ((*it2)->getNickname() == _client->getNickname())
 					{
 						_client->leaveChannel(*it);
-						(*it)->deleteClient(*it2);	
+						(*it)->deleteClient(*it2);
+						checkIfEmptyChan();
 						std::string msg;
-						msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " PART " + _actual_chan->getName();
+						msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " PART " + (*_cmd)[_actual_cmd][1];
 						if ((*_cmd)[_actual_cmd].size() > 2)
 						{
 							std::string reason;
@@ -689,7 +716,9 @@ void	Command::names()
 // JOIN
 Channel *Command::findChan(std::string chan_name)
 {
-	for (std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
+	if ((_all_channels).empty())
+		return (NULL);
+	for (std::vector<Channel *>::iterator it = (_all_channels).begin() ; it != (_all_channels).end() ; ++it)
 		if ((*it)->getName() == chan_name)
 			return (*it);
 	return (NULL);
@@ -720,7 +749,7 @@ void	Command::join()
 	{
 		Channel *new_chan = new Channel(chan_name, _client);
 		_client->addChannel(new_chan);
-		_all_channels.push_back(new_chan);
+		(_all_channels).push_back(new_chan);
 		_actual_chan = new_chan;
 		msgJoin(chan_name, new_chan);
 	}
@@ -764,7 +793,7 @@ void Command::kick()
 		return ;
 	}
 	//on parcoure tous les chans
-	for (std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
+	for (std::vector<Channel *>::iterator it = (_all_channels).begin() ; it != (_all_channels).end() ; ++it)
 	{
 		//si le chan existe
 		if ((*it)->getName() == (*_cmd)[_actual_cmd][1])
@@ -808,6 +837,7 @@ void Command::kick()
 								(*it)->deleteClient(*it3);
 								//on supprime le chan de la liste des chans du client
 								(*it3)->leaveChannel(*it);
+								checkIfEmptyChan();
 								return ;
 							}
 							sendToClient(482); //ERR_CHANOPRIVSNEEDED
@@ -874,6 +904,7 @@ void Command::kill()
 			reason_of_kill += " ";
 		reason_of_kill += *it;
 	}
+//////////////////////TOUT SUR LES CHANS)
 	std::string msg;
 	msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name;
 	msg += " KILL " + (*_cmd)[_actual_cmd][1] + " :" + reason_of_kill + "\r\n";
@@ -935,7 +966,6 @@ void	Command::quit()
 				send((*it2)->getSock(), msg.c_str(), msg.size(), 0);
 		}
 	}
-	//SUPPR LE CHAN SI PLUS PERSONNE DEDANS
 	fatalError(msg);
 }
 
@@ -949,7 +979,7 @@ void	Command::notice()
 	std::string target_name = (*_cmd)[_actual_cmd][1];
 	if (target_name[0] == '#') //Channel part
 	{
-		for(std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
+		for(std::vector<Channel *>::iterator it = (_all_channels).begin() ; it != (_all_channels).end() ; ++it)
 		{
 			if ((*it)->getName() == target_name)
 			{
@@ -990,7 +1020,7 @@ void	Command::privmsg()
 	//Channel part
 	if (target_name[0] == '#')
 	{
-		for(std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
+		for(std::vector<Channel *>::iterator it = (_all_channels).begin() ; it != (_all_channels).end() ; ++it)
 		{
 			if ((*it)->getName() == target_name)
 			{

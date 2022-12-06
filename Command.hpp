@@ -64,6 +64,9 @@ class Command
 		//Channels helper
 		void sendToChannel(Channel *channel, bool is_notice);
 		std::vector<Channel *> getAllChannels();
+		Channel *findChan(std::string chan_name);
+		void checkIfEmptyChan();
+		std::vector<Channel *>::iterator returnItChan(std::string chan_name);
 
 		//Clients
 		Client *_client;
@@ -84,7 +87,6 @@ class Command
 		//Channels
 		std::vector<Channel *> _all_channels;
 		Channel *_actual_chan;
-		Channel *findChan(std::string chan_name);
 		std::string _bad_chan_name;
 		bool _bad_chan_bool;
 		std::string _bad_nickname;
