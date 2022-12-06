@@ -1,7 +1,7 @@
 #include "Command.hpp"
 
 Command::Command(std::map<int, Client *> *client_map, std::string password, bool *fatal_error):
-	_clients_ptr(client_map), _password(password), _correctPass(false), _server_name("localhost"), _oper_name("coco"), _oper_pass("toto"), _bad_chan_name(), _bad_chan_bool(false), _fatal_error(fatal_error), _creationTime(getTime()) 
+	_clients_ptr(client_map), _password(password), _correctPass(false), _server_name("localhost"), _oper_name("coco"), _oper_pass("toto"), _bad_chan_name(), _bad_chan_bool(false), _bad_nickname(), _fatal_error(fatal_error), _creationTime(getTime()) 
 {
 	_cmd_list.push_back("MODE");
 	_cmd_list.push_back("OPER");
@@ -815,7 +815,9 @@ void Command::kick()
 						}
 					}
 					//si la target n'est pas dans le chan
+					_bad_nickname = (*_cmd)[_actual_cmd][2];
 					sendToClient(441); //ERR_USERNOTINCHANNEL
+					_bad_nickname.clear();
 					return ;
 				}
 			}
@@ -1214,7 +1216,7 @@ void Command::sendToClient(int numeric_replies)
 			}
 		case 441: //ERR_USERNOTINCHANNEL
 			{
-				msg += _client->getUsername() + " " + _client->getNickname() + " " + _actual_chan->getName() + " :They aren't on that channel\r\n";
+				msg += _client->getUsername() + " " + _bad_nickname + " " + _actual_chan->getName() + " :They aren't on that channel\r\n";
 				break;
 			}
 		case 442: //ERR_NOTONCHANNEL
