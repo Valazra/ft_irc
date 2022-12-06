@@ -14,6 +14,7 @@ Command::Command(std::map<int, Client *> *client_map, std::string password, bool
 	_cmd_list.push_back("QUIT");
 	_cmd_list.push_back("NOTICE");
 	_cmd_list.push_back("KILL");
+	_cmd_list.push_back("kill");
 	_cmd_list.push_back("KICK");
 	_cmd_list.push_back("TOPIC");
 	_cmd_list.push_back("INVITE");
@@ -30,6 +31,7 @@ Command::Command(std::map<int, Client *> *client_map, std::string password, bool
 	_cmd_availables["QUIT"] = &Command::quit;
 	_cmd_availables["NOTICE"] = &Command::notice;
 	_cmd_availables["KILL"] = &Command::kill;
+	_cmd_availables["kill"] = &Command::kill;
 	_cmd_availables["KICK"] = &Command::kick;
 	_cmd_availables["TOPIC"] = &Command::topic;
 	_cmd_availables["INVITE"] = &Command::invite;
@@ -316,7 +318,6 @@ void	Command::part()
 					{
 						_client->leaveChannel(*it);
 						(*it)->deleteClient(*it2);
-						checkIfEmptyChan();
 						std::string msg;
 						msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " PART " + (*_cmd)[_actual_cmd][1];
 						if ((*_cmd)[_actual_cmd].size() > 2)
@@ -334,6 +335,7 @@ void	Command::part()
 						for (std::vector<Client *>::iterator it3 = listClients->begin() ; it3 != listClients->end() ; ++it3)
 							send((*it3)->getSock(), msg.c_str(), msg.size(), 0);
 						send(_client->getSock(), msg.c_str(), msg.size(), 0);	
+						checkIfEmptyChan();
 						return ;
 					}
 				}
@@ -792,73 +794,52 @@ void Command::kick()
 		sendToClient(461); //ERR_NEEDMOREPARAMS
 		return ;
 	}
-	//on parcoure tous les chans
-	for (std::vector<Channel *>::iterator it = (_all_channels).begin() ; it != (_all_channels).end() ; ++it)
+	std::string chan_name = (*_cmd)[_actual_cmd][1];
+	Channel *finded_chan = findChan(chan_name);
+	_bad_chan_name = (*_cmd)[_actual_cmd][1];
+	_actual_chan = finded_chan;
+	if (!finded_chan)
 	{
-		//si le chan existe
-		if ((*it)->getName() == (*_cmd)[_actual_cmd][1])
+		sendToClient(403); //ERR_NOSUCHCHANNEL
+		return ;
+	}
+	std::vector<Client *> *listClients = finded_chan->getListClients();
+	for(std::vector<Client *>::iterator it = listClients->begin() ; it != listClients->end() ; ++it)
+	{
+		if ((*it)->getNickname() == _client->getNickname())
 		{
-			_actual_chan = (*it);
-			std::vector<Client *> *listClients = (*it)->getListClients();
-			//on parcoure tous les clients du chan
-			for(std::vector<Client *>::iterator it2 = listClients->begin() ; it2 != listClients->end() ; ++it2)
+			for(std::vector<Client *>::iterator it3 = listClients->begin() ; it3 != listClients->end() ; ++it3)
 			{
-				//si le client est dans le chan
-				if ((*it2)->getNickname() == _client->getNickname())
+				if ((*it3)->getNickname() == (*_cmd)[_actual_cmd][2])
 				{
-					//on reparcoure la liste des clients du chan
-					for(std::vector<Client *>::iterator it3 = listClients->begin() ; it3 != listClients->end() ; ++it3)
+					if (finded_chan->getChannelOperator() == _client)
 					{
-						//si la target est dans le chan
-						if ((*it3)->getNickname() == (*_cmd)[_actual_cmd][2])
-						{
-							//on tcheck si le client est operator de chan
-							if ((*it)->getChannelOperator() == _client)
-							{
-								std::string msg;
-								msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " KICK " + _actual_chan->getName() + " " + (*it3)->getNickname();
-								//si une raison a été précisée 
-								if ((*_cmd)[_actual_cmd].size() > 3)
-								{
-									std::string reason;
-									for(std::vector<std::string>::iterator it4 = (*_cmd)[_actual_cmd].begin() + 3 ; it4 != (*_cmd)[_actual_cmd].end() ; ++it4)
-									{
-										reason += " ";
-										reason += (*it4);
-									}
-									msg += reason;	
-								}
-								msg += "\r\n";
-								std::cout << "MSG KICK = " << msg << std::endl;
-								//on envoie le message à tous les gens du chan
-								for (std::vector<Client *>::iterator it5 = listClients->begin() ; it5 != listClients->end() ; ++it5)
-									send((*it5)->getSock(), msg.c_str(), msg.size(), 0);
-								//on supprime le client de la liste des clients du chan
-								(*it)->deleteClient(*it3);
-								//on supprime le chan de la liste des chans du client
-								(*it3)->leaveChannel(*it);
-								checkIfEmptyChan();
-								return ;
-							}
-							sendToClient(482); //ERR_CHANOPRIVSNEEDED
-							return ;
-						}
+						std::string msg;
+						msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " KICK " + _actual_chan->getName() + " " + (*it3)->getNickname();
+						if ((*_cmd)[_actual_cmd].size() > 3)
+							for(std::vector<std::string>::iterator it4 = (*_cmd)[_actual_cmd].begin() + 3 ; it4 != (*_cmd)[_actual_cmd].end() ; ++it4)
+								msg += " " + (*it4);
+						msg += "\r\n";
+						if (DEBUG)
+							std::cout << "MSG KICK = " << msg << std::endl;
+						for (std::vector<Client *>::iterator it5 = listClients->begin() ; it5 != listClients->end() ; ++it5)
+							send((*it5)->getSock(), msg.c_str(), msg.size(), 0);
+						finded_chan->deleteClient(*it3);
+						(*it3)->leaveChannel(finded_chan);
+						checkIfEmptyChan();
+						return ;
 					}
-					//si la target n'est pas dans le chan
-					_bad_nickname = (*_cmd)[_actual_cmd][2];
-					sendToClient(441); //ERR_USERNOTINCHANNEL
-					_bad_nickname.clear();
+					sendToClient(482); //ERR_CHANOPRIVSNEEDED
 					return ;
 				}
 			}
-			//si le client est pas dans le chan
-			sendToClient(442); //ERR_NOTONCHANNEL
+			_bad_nickname = (*_cmd)[_actual_cmd][2];
+			sendToClient(441); //ERR_USERNOTINCHANNEL
+			_bad_nickname.clear();
 			return ;
 		}
 	}
-	//si le chan existe pas
-	_bad_chan_name = (*_cmd)[_actual_cmd][1];
-	sendToClient(403); //ERR_NOSUCHCHANNEL
+	sendToClient(442); //ERR_NOTONCHANNEL
 	return ;
 }
 
