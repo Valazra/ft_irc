@@ -50,6 +50,7 @@ class Command
 		void fatalError(std::string msg_error); //ERROR
 
 		//COMMANDS UTILS
+		void partSingle(std::string current_chan);
 		void sendToClient(int numeric_replies);
 		void sendToTarget(std::string target_name, int target_socket, bool is_notice);
 		int parsingNickname(std::string nickname);
@@ -60,6 +61,7 @@ class Command
 		std::string getTime();
 		int nbCommas(std::string chans);
 		std::vector<std::string> splitCommas(std::string listchans);
+		void joinSingle(std::string current_chan);
 
 		//Channels helper
 		void sendToChannel(Channel *channel, bool is_notice);
@@ -67,6 +69,7 @@ class Command
 		Channel *findChan(std::string chan_name);
 		void checkIfEmptyChan();
 		std::vector<Channel *>::iterator returnItChan(std::string chan_name);
+		void clearChan(Channel *chan, Client *client);
 
 		//Clients
 		Client *_client;

@@ -180,22 +180,15 @@ std::vector<std::string> Command::splitCommas(std::string listchans)
 {
 	std::vector<std::string> vect_chan;
 	std::string tmp;
-	int i = 0;
 	for(std::string::iterator it = listchans.begin() ; it != listchans.end() ; ++it)
 	{
-		if (tmp[0] == ',')
-		{
-			tmp.erase(0, 1);
-			i = 0;
-		}
 		if ((*it) == ',')
 		{
 			vect_chan.push_back(tmp);
 			tmp.clear();
-			i = 0;
 		}
-		tmp.push_back((*it));
-		i++;
+		if ((*it) != ',')
+			tmp.push_back((*it));
 	}
 	if (tmp.size() > 0)
 		vect_chan.push_back(tmp);
@@ -215,12 +208,12 @@ std::vector<Channel *>::iterator Command::returnItChan(std::string chan_name)
 void 	Command::checkIfEmptyChan()
 {
 	std::vector<Channel *> tmp;
-	for(std::vector<Channel *>::iterator it = (_all_channels).begin() ; it != (_all_channels).end() ; ++it)
+	for (std::vector<Channel *>::iterator it = (_all_channels).begin() ; it != (_all_channels).end() ; ++it)
 	{
 		if ((*it)->getListClients()->size() == 0)
 			tmp.push_back(*it);
 	}
-	for(std::vector<Channel *>::iterator it = tmp.begin() ; it != tmp.end() ; ++it)
+	for (std::vector<Channel *>::iterator it = tmp.begin() ; it != tmp.end() ; ++it)
 	{
 			(_all_channels).erase(returnItChan((*it)->getName()));
 			delete ((*it));
@@ -237,118 +230,43 @@ void	Command::part()
 		sendToClient(461); //ERR_NEEDMOREPARAMS
 		return ;
 	}
-	int nb_commas = nbCommas((*_cmd)[_actual_cmd][1]);
-	if (nb_commas)
+	std::vector<std::string> split_chan = splitCommas((*_cmd)[_actual_cmd][1]);
+	for (std::vector<std::string>::iterator it = split_chan.begin() ; it != split_chan.end() ; ++it)
+		partSingle(*it);
+}
+
+void	Command::partSingle(std::string current_chan)
+{
+	Channel *finded_chan = findChan(current_chan);
+	_bad_chan_name = current_chan;
+	_actual_chan = finded_chan;
+	if (!finded_chan)
 	{
-		bool do_error = 1;
-		std::vector<std::string> vect_chan = splitCommas((*_cmd)[_actual_cmd][1]);
-		for (std::vector<std::string>::iterator it = vect_chan.begin() ; it != vect_chan.end() ; ++it)
-		{
-			do_error = true;
-			//on parcoure tous les chans
-			for (std::vector<Channel *>::iterator it2 = (_all_channels).begin() ; it2 != (_all_channels).end() ; ++it2)
-			{
-				//si le chan existe
-				if ((*it2)->getName() == (*it))
-				{
-					_actual_chan = (*it2);
-					std::vector<Client *> *listClients = (*it2)->getListClients();
-					//on parcoure tous les clients du chan
-					for(std::vector<Client *>::iterator it3 = listClients->begin() ; it3 != listClients->end() ; ++it3)
-					{
-						//si le client est dans le chan
-						if ((*it3)->getNickname() == _client->getNickname())
-						{
-							_client->leaveChannel(*it2);
-							(*it2)->deleteClient(*it3);
-							checkIfEmptyChan();
-							std::string msg;
-							msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " PART " + (*_cmd)[_actual_cmd][1];
-							if ((*_cmd)[_actual_cmd].size() > 2)
-							{
-								std::string reason;
-								for(std::vector<std::string>::iterator it4 = (*_cmd)[_actual_cmd].begin() + 2 ; it4 != (*_cmd)[_actual_cmd].end() ; ++it4)
-								{
-									reason += " ";
-									reason += *it4;
-								}
-								msg += reason;
-							}
-							msg += "\r\n";
-							std::cout << "MSG = " << msg << std::endl;
-							for (std::vector<Client *>::iterator it4 = listClients->begin() ; it4 != listClients->end() ; ++it4)
-								send((*it4)->getSock(), msg.c_str(), msg.size(), 0);
-							send(_client->getSock(), msg.c_str(), msg.size(), 0);
-							do_error = false;
-							break ;
-						}
-					}
-					//si le client est pas dans le chan
-					if (do_error)
-					{
-						sendToClient(442); //ERR_NOTONCHANNEL
-						do_error = false;
-					}
-				}
-			}
-			//si on a pas trouvé le chan
-			if (do_error)
-			{
-				_bad_chan_name = (*it);
-				sendToClient(403); //ERR_NOSUCHCHANNEL
-				do_error = false;
-			}
-		}
-	}
-	else
-	{
-		//on parcoure tous les chans
-		for (std::vector<Channel *>::iterator it = (_all_channels).begin() ; it != (_all_channels).end() ; ++it)
-		{
-			//si le chan existe
-			if ((*it)->getName() == (*_cmd)[_actual_cmd][1])
-			{
-				_actual_chan = (*it);
-				std::vector<Client *> *listClients = (*it)->getListClients();
-				//on parcoure tous les clients du chan
-				for(std::vector<Client *>::iterator it2 = listClients->begin() ; it2 != listClients->end() ; ++it2)
-				{
-					//si le client est dans le chan
-					if ((*it2)->getNickname() == _client->getNickname())
-					{
-						_client->leaveChannel(*it);
-						(*it)->deleteClient(*it2);
-						std::string msg;
-						msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " PART " + (*_cmd)[_actual_cmd][1];
-						if ((*_cmd)[_actual_cmd].size() > 2)
-						{
-							std::string reason;
-							for(std::vector<std::string>::iterator it3 = (*_cmd)[_actual_cmd].begin() + 2 ; it3 != (*_cmd)[_actual_cmd].end() ; ++it3)
-							{
-								reason += " ";
-								reason += *it3;
-							}
-							msg += reason;
-						}
-						msg += "\r\n";
-						std::cout << "MSG = " << msg << std::endl;
-						for (std::vector<Client *>::iterator it3 = listClients->begin() ; it3 != listClients->end() ; ++it3)
-							send((*it3)->getSock(), msg.c_str(), msg.size(), 0);
-						send(_client->getSock(), msg.c_str(), msg.size(), 0);	
-						checkIfEmptyChan();
-						return ;
-					}
-				}
-				//si le client est pas dans le chan
-				sendToClient(442); //ERR_NOTONCHANNEL
-				return ;		
-			}
-		}
-		//si on a pas trouvé le chan
-		_bad_chan_name = (*_cmd)[_actual_cmd][1];
 		sendToClient(403); //ERR_NOSUCHCHANNEL
-		return ;	
+		return ;
 	}
+	std::vector<Client *> *listClients = finded_chan->getListClients();
+	for(std::vector<Client *>::iterator it = listClients->begin() ; it != listClients->end() ; ++it)
+	{
+		if ((*it)->getNickname() == _client->getNickname())
+		{
+			_client->leaveChannel(finded_chan);
+			finded_chan->deleteClient(*it);
+			std::string msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " PART " + finded_chan->getName();
+			if ((*_cmd)[_actual_cmd].size() > 2)
+				for(std::vector<std::string>::iterator it4 = (*_cmd)[_actual_cmd].begin() + 2 ; it4 != (*_cmd)[_actual_cmd].end() ; ++it4)
+					msg += " " + *it4;
+			msg += "\r\n";
+			if (DEBUG)
+				std::cout << "MSG = " << msg << std::endl;
+			for (std::vector<Client *>::iterator it4 = listClients->begin() ; it4 != listClients->end() ; ++it4)
+				send((*it4)->getSock(), msg.c_str(), msg.size(), 0);
+			send(_client->getSock(), msg.c_str(), msg.size(), 0);
+			checkIfEmptyChan();
+			return ;
+		}
+	}
+	sendToClient(442); //ERR_NOTONCHANNEL
 }
 
 // INVITE
@@ -561,7 +479,7 @@ int Command::parsingNickname(std::string nickname)
 {
 	//find renvoie npos si aucune occurence n'a été trouvée, sinon ça renvoie l'endroit ou l'occurence à été trouvée
 	std::string forbidden(" ,*?!@.");
-	if (nickname.size() > 10)
+	if (nickname.size() > 9)
 		return (0);
 	if (nickname[0] == '$' || nickname[0] == ':' || forbidden.find(nickname[0], 0) != std::string::npos)
 		return (0);
@@ -745,22 +663,29 @@ void	Command::join()
 		sendToClient(461); //ERR_NEEDMOREPARAMS
 		return ;
 	}
-	std::string chan_name = (*_cmd)[_actual_cmd][1];
-	Channel *finded_chan = findChan(chan_name);
+	std::vector<std::string> split_chan = splitCommas((*_cmd)[_actual_cmd][1]);
+	for (std::vector<std::string>::iterator it = split_chan.begin() ; it != split_chan.end() ; ++it)
+		joinSingle(*it);
+
+}
+
+void	Command::joinSingle(std::string current_chan)
+{
+	Channel *finded_chan = findChan(current_chan);
 	if (!finded_chan) //No chan We create it
 	{
-		Channel *new_chan = new Channel(chan_name, _client);
+		Channel *new_chan = new Channel(current_chan, _client);
 		_client->addChannel(new_chan);
 		(_all_channels).push_back(new_chan);
 		_actual_chan = new_chan;
-		msgJoin(chan_name, new_chan);
+		msgJoin(current_chan, new_chan);
 	}
 	else //Chan already exist
 	{
 		_client->addChannel(finded_chan);
 		(finded_chan)->addClient(_client); 
 		_actual_chan = finded_chan;
-		msgJoin(chan_name, finded_chan);
+		msgJoin(current_chan, finded_chan);
 	}
 }
 
@@ -781,6 +706,12 @@ void Command::nameReply(std::string chan_name, Channel *chan)
 	msg += "\r\n";
 	send(_client_socket, msg.c_str(), msg.size(), 0);
 	sendToClient(366); //RPL_ENDOFNAMES
+}
+
+void Command::clearChan(Channel *chan, Client *client)
+{
+	chan->deleteClient(client);
+	client->leaveChannel(chan);
 }
 
 // KICK
@@ -824,8 +755,7 @@ void Command::kick()
 							std::cout << "MSG KICK = " << msg << std::endl;
 						for (std::vector<Client *>::iterator it5 = listClients->begin() ; it5 != listClients->end() ; ++it5)
 							send((*it5)->getSock(), msg.c_str(), msg.size(), 0);
-						finded_chan->deleteClient(*it3);
-						(*it3)->leaveChannel(finded_chan);
+						clearChan(finded_chan, *it3);
 						checkIfEmptyChan();
 						return ;
 					}
