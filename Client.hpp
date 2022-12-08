@@ -61,6 +61,7 @@ class Client
 		void addChannel(Channel *channel);
 		void leaveChannel(Channel *channel);
 		std::vector<Channel *>* getClientChannels();
+		void leaveAllChannels();
 
 	private:
 		Client();

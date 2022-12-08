@@ -314,8 +314,13 @@ void	Command::quit()
 				send((*it2)->getSock(), msg.c_str(), msg.size(), 0);
 		}
 	}
-	for(std::vector<Channel *>::iterator it = _client->getClientChannels()->begin() ; it != _client->getClientChannels()->end() ; ++it)
-		clearChan((*it), _client);
+	for (std::vector<Channel *>::iterator it = (_client->getClientChannels())->begin() ; it != (_client->getClientChannels())->end() ; ++it)
+	{
+		(*it)->deleteClient(_client);
+	}
+	_client->leaveAllChannels();
+	//chan->deleteClient(client);
+	//client->leaveChannel(chan);
 	checkIfEmptyChan();
 	_sock_to_remove = _client->getSock();
 	fatalError(msg);
@@ -852,11 +857,13 @@ void Command::kill()
 		return ;
 	}
 	int socket_killed;
+	Client *client_killed;
 	for (std::map<int, Client *>::iterator it = (*_clients_ptr).begin() ; it != (*_clients_ptr).end() ; ++it)
 	{
 		if ((*it).second->getNickname() == (*_cmd)[_actual_cmd][1])
 		{
 			socket_killed = (*it).first;
+			client_killed = (*it).second;
 		}
 	}
 	std::string reason_of_kill;
@@ -866,30 +873,23 @@ void Command::kill()
 			reason_of_kill += " ";
 		reason_of_kill += *it;
 	}
-//////////////////////TOUT SUR LES CHANS)
 	std::string msg;
 	msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name;
 	msg += " KILL " + (*_cmd)[_actual_cmd][1] + " :" + reason_of_kill + "\r\n";
 	send(socket_killed, msg.c_str(), msg.size(), 0);
-
-	//Il faut spread ce message a tout les gens qui partagent un chan avec la socket_killed
 	msg = ":" + (*_clients_ptr)[socket_killed]->getNickname() + "!" + (*_clients_ptr)[socket_killed]->getUsername() + "@" + _server_name;
 	msg += " QUIT :";
 	msg += "Killed (" + _client->getNickname() + "(" + reason_of_kill + "))\r\n";
-	send(socket_killed, msg.c_str(), msg.size(), 0);
-
+	for (std::vector<Channel *>::iterator it = (client_killed->getClientChannels())->begin() ; it != (client_killed->getClientChannels())->end() ; ++it)
+		for(std::vector<Client *>::iterator it2 = ((*it)->getListClients())->begin() ; it2 != ((*it)->getListClients())->end() ; ++it2)
+				send((*it2)->getSock(), msg.c_str(), msg.size(), 0);
 	msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name;
 	msg += " ERROR :Closing Link: " + _server_name;
 	msg += "(Killed (" + _client->getNickname() + "(" + reason_of_kill + ")))\r\n";
 	send(socket_killed, msg.c_str(), msg.size(), 0);
-	for(std::map<int, Client *>::iterator it = _clients_ptr->begin() ; it != _clients_ptr->end() ; ++it)
-	{
-		if ((*it).second->getNickname() == (*_cmd)[_actual_cmd][1])
-		{
-			for(std::vector<Channel *>::iterator it2 = (*it).second->getClientChannels()->begin() ; it2 != (*it).second->getClientChannels()->end() ; ++it2)
-				clearChan((*it2), (*it).second);
-		}
-	}
+	for (std::vector<Channel *>::iterator it = (client_killed->getClientChannels())->begin() ; it != (client_killed->getClientChannels())->end() ; ++it)
+		(*it)->deleteClient(client_killed);
+	client_killed->leaveAllChannels();
 	checkIfEmptyChan();
 	_sock_to_remove = socket_killed;
 	*_fatal_error = true;

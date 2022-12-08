@@ -217,6 +217,12 @@ void Client::leaveChannel(Channel *channel)
 		}
 	}
 }
+
+void Client::leaveAllChannels()
+{
+	_client_channels.clear();
+}
+
 std::vector<Channel *> *Client::getClientChannels()
 {
 	return (&_client_channels);
