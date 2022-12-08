@@ -43,7 +43,7 @@ Command::~Command()
 {
 }
 
-//COMMANDS MAIN FUNCTIONS
+// COMMANDS MAIN FUNCTIONS
 bool Command::check_if_valid_cmd(std::string cmd)
 {
 	for (std::vector<std::string>::iterator it1 = _cmd_list.begin(); it1 != _cmd_list.end(); ++it1)
@@ -101,122 +101,271 @@ void Command::readCmd(int client_socket)
 	}
 }
 
-// MODE
-void	Command::mode()
+// CLIENT MESSAGES
+// CONNECTION MESSAGES
+// CAP
+void	Command::cap()
 {
 	if (DEBUG)
-		std::cout << "Command::mode" << std::endl;
-	if ((*_cmd)[_actual_cmd].size() < 2)
+		std::cout << "Command::cap" << std::endl;
+}
+
+// PASS
+void	Command::pass()
+{
+	if (DEBUG)
+		std::cout << "Command::pass | Pass attendu = " << _password << " | Pass recu = " << (*_cmd)[_actual_cmd][1] << std::endl;
+	if (_client->getStatus() != 0)
+	{
+		sendToClient(462); //ERR_ALREADYREGISTERED
+		return ;
+	}
+	else if ((*_cmd)[_actual_cmd].size() < 2)
 	{
 		sendToClient(461); //ERR_NEEDMOREPARAMS
 		return ;
 	}
-	std::string target_name = (*_cmd)[_actual_cmd][1];
-	_cmd_availables["TOPIC"] = &Command::topic;
-	if ((*_cmd)[_actual_cmd][1][0] == '#')
+	if ((*_cmd)[_actual_cmd][1] == _password)
 	{
-		//Channel part
-		for(std::vector<Channel *>::iterator it = (_all_channels).begin() ; it != (_all_channels).end() ; ++it)
-		{
-			if ((*it)->getName() == target_name)
-			{
-				_actual_chan = (*it);
-				if ((*_cmd)[_actual_cmd].size() == 2)
-				{
-					sendToClient(324); //RPL_CHANNELMODEIS
-					return ;
-				}
-				sendToClient(477); //ERR_NOCHANMODES
-				return;
-			}
-		}
-		_bad_chan_name = target_name; 
-		sendToClient(403); //ERR_NOSUCHCHANNEL
-
+		_correctPass = true;
 	}
 	else
 	{
-		//User part
-		if (!checkNickname((*_cmd)[_actual_cmd][1]))
+		sendToClient(464); //ERR_PASSWDMISMATCH
+		fatalError("You SHOULD connect with the good password.");
+		return ;
+	}
+}
+
+// NICK
+void	Command::nick()
+{
+	if (DEBUG)
+		std::cout << "Command::nick" << std::endl;
+	if (!parsingNickname((*_cmd)[_actual_cmd][1]) || (*_cmd)[_actual_cmd].size() > 2)
+	{
+		sendToClient(432); //ERR_ERRONEUSNICKNAME
+		return ;
+	}
+	else if (checkNickname((*_cmd)[_actual_cmd][1]))
+	{
+		sendToClient(433); //ERR_NICKNAMEINUSE
+		return ;
+	}
+	else if ((*_cmd)[_actual_cmd].size() == 1)
+	{
+		sendToClient(431); //ERR_NONICKNAMEGIVEN
+		return ;
+	}
+	else
+	{
+		std::string msg;
+		msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " NICK " + (*_cmd)[_actual_cmd][1] + "\r\n";
+		std::vector<int> has_been_send;
+		bool go_send;
+		for(std::vector<Channel *>::iterator it = (_client->getClientChannels())->begin(); it != (_client->getClientChannels())->end() ; ++it)
 		{
-			sendToClient(401); //ERR_NOSUCHNICK 
-			return ;
-		}
-		if ((*_cmd)[_actual_cmd][1] != (*_client).getNickname())
-		{
-			sendToClient(502); //ERR_USERSDONTMATCH 
-			return ;
-		}
-		if ((*_cmd)[_actual_cmd].size() == 2)
-		{
-			sendToClient(221); //RPL_UMODEIS 
-			return ;
-		}
-		if ((*_cmd)[_actual_cmd][2][0] == '-')
-		{
-			if ((*_cmd)[_actual_cmd][2].size() == 2 && (*_cmd)[_actual_cmd][2][1] == 'o')
+			for(std::vector<Client *>::iterator it2 = ((*it)->getListClients())->begin(); it2 != ((*it)->getListClients())->end() ; ++it2)
 			{
-				(*_client).setOper(false);
-				sendToClient(221); //RPL_UMODEIS 
-				return ;
+				go_send = 1;
+				for(std::vector<int>::iterator it3 = has_been_send.begin() ; it3 != has_been_send.end() ; ++it3)
+				{
+					if ((*it2)->getSock() == (*it3))
+						go_send = 0;
+				}
+				if (go_send)
+				{
+					if ((*it2)->getSock() != _client->getSock())
+					{
+						send((*it2)->getSock(), msg.c_str(), msg.size(), 0);
+						has_been_send.push_back((*it2)->getSock());
+					}
+				}
 			}
 		}
-		sendToClient(501); //ERR_UMODEUNKNOWNFLAG
+		send(_client->getSock(), msg.c_str(), msg.size(), 0);
+		_client->setNickname((*_cmd)[_actual_cmd][1]);
 	}
 }
 
-int	Command::nbCommas(std::string chans)
+// USER
+void	Command::user()
 {
-	int nb_commas = 0;
-	for(std::string::iterator it = chans.begin() ; it != chans.end() ; ++it)
+	if (DEBUG)
+		std::cout << "Command::user" << std::endl;
+	if (!_correctPass)
 	{
-		if ((*it) == ',')
-			nb_commas++;
+		sendToClient(464); //ERR_PASSWDMISMATCH
+		fatalError("You should connect with a password.");
+		return ;
 	}
-	return (nb_commas);
+	//si le status est pas sur TO_REGISTER alors on va dans le if
+	if (_client->getStatus() != 0)
+	{
+		sendToClient(462); //ERR_ALREADYREGISTERED
+		return ;
+	}
+	else if ((*_cmd)[_actual_cmd].size() < 4)
+	{
+		sendToClient(461); //ERR_NEEDMOREPARAMS
+		return ;
+	}
+	else if (!parsingRealname((*_cmd)[_actual_cmd][4]))
+	{
+		return ; //pas de ":" devant le real name 
+	}
+	else
+	{ 
+		_client->setUsername((*_cmd)[_actual_cmd][1]);
+		_client->setRealname((*_cmd)[_actual_cmd][4]);
+	}
+	_client->setStatus(REGISTER);
+	sendToClient(1);
+	sendToClient(2);
+	sendToClient(3);
+	sendToClient(4);
 }
 
-std::vector<std::string> Command::splitCommas(std::string listchans)
+// OPER
+void	Command::oper()
 {
-	std::vector<std::string> vect_chan;
-	std::string tmp;
-	for(std::string::iterator it = listchans.begin() ; it != listchans.end() ; ++it)
+	if (DEBUG)
+		std::cout << "Command::oper" << std::endl;
+	if ((*_cmd)[_actual_cmd].size() != 3)
 	{
-		if ((*it) == ',')
+		sendToClient(461); //ERR_NEEDMOREPARAMS
+		return ;
+	}
+	else if (_client->getStatus() != REGISTER)
+	{
+		sendToClient(491); //ERR_NOOPERHOST
+		return ;
+	}
+	if ((*_cmd)[_actual_cmd][1] == _oper_name && (*_cmd)[_actual_cmd][2] == _oper_pass)
+	{
+		_client->setOper(true);
+		sendToClient(381); // 
+		sendToClient(221); //RPL_UMODEIS 
+		return ;
+	}
+	else
+	{
+		sendToClient(464);//ERR_PASSWDMISMATCH
+		return ;
+	}
+}
+
+// QUIT
+void	Command::quit()
+{
+	if (DEBUG)
+		std::cout << "Command::quit" << std::endl;
+	std::string msg;
+	std::string reason;
+	msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " QUIT :";
+	if ((*_cmd)[_actual_cmd].size() == 2 && (*_cmd)[_actual_cmd][1] == ":leaving")
+	{
+		reason = "Quit: ";
+		msg += reason;
+	}
+	else
+	{
+		reason = "Quit";
+		for(std::vector<std::string>::iterator it = (*_cmd)[_actual_cmd].begin() + 1 ; it != (*_cmd)[_actual_cmd].end() ; ++it)
 		{
-			vect_chan.push_back(tmp);
-			tmp.clear();
+			if (it != (*_cmd)[_actual_cmd].begin() + 1)
+				reason += " ";
+			else
+			{
+				std::string tmp;
+				tmp = (*it);
+				tmp.insert(1, " ");
+				(*it) = tmp;
+			}
+			reason += *it;
 		}
-		if ((*it) != ',')
-			tmp.push_back((*it));
+		msg += reason;
 	}
-	if (tmp.size() > 0)
-		vect_chan.push_back(tmp);
-	return (vect_chan);
+	msg += "\r\n";
+	std::cout << "msg = " << msg << std::endl;
+	//on parcoure tous les chans du client
+	for (std::vector<Channel *>::iterator it = (_client->getClientChannels())->begin() ; it != (_client->getClientChannels())->end() ; ++it)
+	{
+		//on parcoure tous les clients du chan
+		for(std::vector<Client *>::iterator it2 = ((*it)->getListClients())->begin() ; it2 != ((*it)->getListClients())->end() ; ++it2)
+		{
+			if ((*it2) != _client)
+				send((*it2)->getSock(), msg.c_str(), msg.size(), 0);
+		}
+	}
+	fatalError(msg);
 }
 
-std::vector<Channel *>::iterator Command::returnItChan(std::string chan_name)
+// ERROR
+void Command::fatalError(std::string msg_error)
 {
-	for(std::vector<Channel *>::iterator it = (_all_channels).begin() ; it != (_all_channels).end() ; ++it)
-	{
-		if ((*it)->getName() == chan_name)
-			return (it);
-	}
-	return (_all_channels.end());
+	std::string msg;
+	msg = ":" + _client->getNickname() + " " + "ERROR" + " " + msg_error + "\r\n";
+	if (DEBUG)
+		std::cout << msg << std::endl;
+	send(_client_socket, msg.c_str(), msg.size(), 0);
+	*_fatal_error = true;
+	closeConnection(_client_socket);
 }
 
-void 	Command::checkIfEmptyChan()
+void Command::closeConnection(int close_socket)
 {
-	std::vector<Channel *> tmp;
-	for (std::vector<Channel *>::iterator it = (_all_channels).begin() ; it != (_all_channels).end() ; ++it)
+	//before check if user in channel
+	close(close_socket);
+	//free?
+	(*_clients_ptr).erase(close_socket);
+}
+
+// CHANNEL OPERATIONS
+// JOIN
+void	Command::join()
+{
+	if ((*_cmd)[_actual_cmd].size() == 1)
 	{
-		if ((*it)->getListClients()->size() == 0)
-			tmp.push_back(*it);
+		sendToClient(461); //ERR_NEEDMOREPARAMS
+		return ;
 	}
-	for (std::vector<Channel *>::iterator it = tmp.begin() ; it != tmp.end() ; ++it)
+	std::vector<std::string> split_chan = splitCommas((*_cmd)[_actual_cmd][1]);
+	for (std::vector<std::string>::iterator it = split_chan.begin() ; it != split_chan.end() ; ++it)
+		joinSingle(*it);
+
+}
+
+void	Command::msgJoin(std::string chan_name, Channel *finded_chan)
+{
+	std::string msg;
+	msg =":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " " + " JOIN " + chan_name + "\r\n";
+	std::vector<Client *> *listClientsChan = finded_chan->getListClients();
+	for (std::vector<Client *>::iterator it = listClientsChan->begin() ; it != listClientsChan->end() ; ++it)
+		send((*it)->getSock(), msg.c_str(), msg.size(), 0);
+	if (finded_chan->getHasTopic() == true)
+		sendToClient(332); //RPL_TOPIC
+	nameReply(chan_name, finded_chan);
+
+}
+
+void	Command::joinSingle(std::string current_chan)
+{
+	Channel *finded_chan = findChan(current_chan);
+	if (!finded_chan) //No chan We create it
 	{
-			(_all_channels).erase(returnItChan((*it)->getName()));
-			delete ((*it));
+		Channel *new_chan = new Channel(current_chan, _client);
+		_client->addChannel(new_chan);
+		(_all_channels).push_back(new_chan);
+		_actual_chan = new_chan;
+		msgJoin(current_chan, new_chan);
+	}
+	else //Chan already exist
+	{
+		_client->addChannel(finded_chan);
+		(finded_chan)->addClient(_client); 
+		_actual_chan = finded_chan;
+		msgJoin(current_chan, finded_chan);
 	}
 }
 
@@ -267,59 +416,6 @@ void	Command::partSingle(std::string current_chan)
 		}
 	}
 	sendToClient(442); //ERR_NOTONCHANNEL
-}
-
-// INVITE
-void	Command::invite()
-{
-	if (DEBUG)
-		std::cout << "Command::invite" << std::endl;
-	if ((*_cmd)[_actual_cmd].size() != 3) //si on en a 6 on envoi need more params, c est fifou?
-	{
-		sendToClient(461); //ERR_NEEDMOREPARAMS
-		return ;
-	}
-	std::string target_name = (*_cmd)[_actual_cmd][1];
-	std::string name = (*_cmd)[_actual_cmd][2];
-	Channel *finded_chan = findChan(name);
-	_bad_chan_name = name;
-	_actual_chan = finded_chan;
-	if (!finded_chan)
-	{
-		sendToClient(403); //ERR_NOSUCHCHANNEL
-		return ;
-	}
-	std::vector<Client *> *listClients = finded_chan->getListClients();
-	for (std::vector<Client *>::iterator it = listClients->begin() ; it != listClients->end() ; ++it)
-	{
-		if ((*it)->getNickname() == _client->getNickname())
-		{
-			for (std::vector<Client *>::iterator it1 = listClients->begin() ; it1 != listClients->end() ; ++it1)
-			{
-				if ((*it1)->getNickname() == target_name) //is already on chan?
-				{
-					sendToClient(443); //ERR_USERONCHANNEL
-					return ;
-				}
-			}
-			for (std::map<int, Client *>::iterator it1 = (*_clients_ptr).begin() ; it1 != (*_clients_ptr).end() ; ++it1) 
-			{
-				if ((*it1).second->getNickname() == target_name) //is target existing?
-				{
-					std::string msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " INVITE " + target_name + " " + _actual_chan->getName() + "\r\n";
-					if (DEBUG)
-						std::cout << "MSG = " << msg << std::endl;
-					send((*it1).first, msg.c_str(), msg.size(), 0);	
-					sendToClient(341); //RPL_INVITING
-					return ;
-				}
-			}
-			sendToClient(401); //ERR_NOSUCHNICK
-			return ;
-		}
-	}
-	sendToClient(442); //ERR_NOTONCHANNEL
-	return ;		
 }
 
 // TOPIC
@@ -411,201 +507,6 @@ void	Command::topic()
 	}
 }
 
-// OPER
-void	Command::oper()
-{
-	if (DEBUG)
-		std::cout << "Command::oper" << std::endl;
-	if ((*_cmd)[_actual_cmd].size() != 3)
-	{
-		sendToClient(461); //ERR_NEEDMOREPARAMS
-		return ;
-	}
-	else if (_client->getStatus() != REGISTER)
-	{
-		sendToClient(491); //ERR_NOOPERHOST
-		return ;
-	}
-	if ((*_cmd)[_actual_cmd][1] == _oper_name && (*_cmd)[_actual_cmd][2] == _oper_pass)
-	{
-		_client->setOper(true);
-		sendToClient(381); // 
-		sendToClient(221); //RPL_UMODEIS 
-		return ;
-	}
-	else
-	{
-		sendToClient(464);//ERR_PASSWDMISMATCH
-		return ;
-	}
-}
-
-// CAP
-void	Command::cap()
-{
-	if (DEBUG)
-		std::cout << "Command::cap" << std::endl;
-}
-
-// PASS
-void	Command::pass()
-{
-	if (DEBUG)
-		std::cout << "Command::pass | Pass attendu = " << _password << " | Pass recu = " << (*_cmd)[_actual_cmd][1] << std::endl;
-	if (_client->getStatus() != 0)
-	{
-		sendToClient(462); //ERR_ALREADYREGISTERED
-		return ;
-	}
-	else if ((*_cmd)[_actual_cmd].size() < 2)
-	{
-		sendToClient(461); //ERR_NEEDMOREPARAMS
-		return ;
-	}
-	if ((*_cmd)[_actual_cmd][1] == _password)
-	{
-		_correctPass = true;
-	}
-	else
-	{
-		sendToClient(464); //ERR_PASSWDMISMATCH
-		fatalError("You SHOULD connect with the good password.");
-		return ;
-	}
-}
-
-// NICK
-int Command::parsingNickname(std::string nickname)
-{
-	//find renvoie npos si aucune occurence n'a été trouvée, sinon ça renvoie l'endroit ou l'occurence à été trouvée
-	std::string forbidden(" ,*?!@.");
-	if (nickname.size() > 9)
-		return (0);
-	if (nickname[0] == '$' || nickname[0] == ':' || forbidden.find(nickname[0], 0) != std::string::npos)
-		return (0);
-	for (std::string::iterator it = nickname.begin() + 1 ; it != nickname.end() ; it++)
-	{
-		if (forbidden.find((*it), 0) != std::string::npos)
-			return (0);
-	}
-	return (1);
-}
-
-int Command::checkNickname(std::string nickname)
-{
-	for (std::map<int, Client *>::iterator it = (*_clients_ptr).begin() ; it != (*_clients_ptr).end() ; ++it)
-	{
-		if ((*it).second->getNickname() == nickname)
-			return (1);
-	}
-	return (0);
-}
-
-void	Command::nick()
-{
-	if (DEBUG)
-		std::cout << "Command::nick" << std::endl;
-	if (!parsingNickname((*_cmd)[_actual_cmd][1]) || (*_cmd)[_actual_cmd].size() > 2)
-	{
-		sendToClient(432); //ERR_ERRONEUSNICKNAME
-		return ;
-	}
-	else if (checkNickname((*_cmd)[_actual_cmd][1]))
-	{
-		sendToClient(433); //ERR_NICKNAMEINUSE
-		return ;
-	}
-	else if ((*_cmd)[_actual_cmd].size() == 1)
-	{
-		sendToClient(431); //ERR_NONICKNAMEGIVEN
-		return ;
-	}
-	else
-	{
-		std::string msg;
-		msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " NICK " + (*_cmd)[_actual_cmd][1] + "\r\n";
-		std::vector<int> has_been_send;
-		bool go_send;
-		for(std::vector<Channel *>::iterator it = (_client->getClientChannels())->begin(); it != (_client->getClientChannels())->end() ; ++it)
-		{
-			for(std::vector<Client *>::iterator it2 = ((*it)->getListClients())->begin(); it2 != ((*it)->getListClients())->end() ; ++it2)
-			{
-				go_send = 1;
-				for(std::vector<int>::iterator it3 = has_been_send.begin() ; it3 != has_been_send.end() ; ++it3)
-				{
-					if ((*it2)->getSock() == (*it3))
-						go_send = 0;
-				}
-				if (go_send)
-				{
-					if ((*it2)->getSock() != _client->getSock())
-					{
-						send((*it2)->getSock(), msg.c_str(), msg.size(), 0);
-						has_been_send.push_back((*it2)->getSock());
-					}
-				}
-			}
-		}
-		send(_client->getSock(), msg.c_str(), msg.size(), 0);
-		_client->setNickname((*_cmd)[_actual_cmd][1]);
-	}
-}
-
-int Command::parsingRealname(std::string realname)
-{
-	if (realname[0] != ':')
-		return (0);
-	return (1);
-}
-
-// USER
-void	Command::user()
-{
-	if (DEBUG)
-		std::cout << "Command::user" << std::endl;
-	if (!_correctPass)
-	{
-		sendToClient(464); //ERR_PASSWDMISMATCH
-		fatalError("You should connect with a password.");
-		return ;
-	}
-	//si le status est pas sur TO_REGISTER alors on va dans le if
-	if (_client->getStatus() != 0)
-	{
-		sendToClient(462); //ERR_ALREADYREGISTERED
-		return ;
-	}
-	else if ((*_cmd)[_actual_cmd].size() < 4)
-	{
-		sendToClient(461); //ERR_NEEDMOREPARAMS
-		return ;
-	}
-	else if (!parsingRealname((*_cmd)[_actual_cmd][4]))
-	{
-		return ; //pas de ":" devant le real name 
-	}
-	else
-	{ 
-		/*if (DEBUG)
-		  {
-		  std::cout << "_client->getUsername() = " << _client->getUsername() << std::endl;
-		  std::cout << "_client->getRealname() = " << _client->getRealname() << std::endl;
-		  }*/
-		_client->setUsername((*_cmd)[_actual_cmd][1]);
-		_client->setRealname((*_cmd)[_actual_cmd][4]);
-		/*	if (DEBUG)
-			{
-			std::cout << "_client->getUsername() = " << _client->getUsername() << std::endl;
-			std::cout << "_client->getRealname() = " << _client->getRealname() << std::endl;
-			}*/
-	}
-	_client->setStatus(REGISTER);
-	sendToClient(1);
-	sendToClient(2);
-	sendToClient(3);
-	sendToClient(4);
-}
-
 // NAMES
 void	Command::names()
 {
@@ -633,62 +534,6 @@ void	Command::names()
 	}
 }
 
-// JOIN
-Channel *Command::findChan(std::string chan_name)
-{
-	if ((_all_channels).empty())
-		return (NULL);
-	for (std::vector<Channel *>::iterator it = (_all_channels).begin() ; it != (_all_channels).end() ; ++it)
-		if ((*it)->getName() == chan_name)
-			return (*it);
-	return (NULL);
-}
-
-void	Command::msgJoin(std::string chan_name, Channel *finded_chan)
-{
-	std::string msg;
-	msg =":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " " + " JOIN " + chan_name + "\r\n";
-	std::vector<Client *> *listClientsChan = finded_chan->getListClients();
-	for (std::vector<Client *>::iterator it = listClientsChan->begin() ; it != listClientsChan->end() ; ++it)
-		send((*it)->getSock(), msg.c_str(), msg.size(), 0);
-	if (finded_chan->getHasTopic() == true)
-		sendToClient(332); //RPL_TOPIC
-	nameReply(chan_name, finded_chan);
-
-}
-void	Command::join()
-{
-	if ((*_cmd)[_actual_cmd].size() == 1)
-	{
-		sendToClient(461); //ERR_NEEDMOREPARAMS
-		return ;
-	}
-	std::vector<std::string> split_chan = splitCommas((*_cmd)[_actual_cmd][1]);
-	for (std::vector<std::string>::iterator it = split_chan.begin() ; it != split_chan.end() ; ++it)
-		joinSingle(*it);
-
-}
-
-void	Command::joinSingle(std::string current_chan)
-{
-	Channel *finded_chan = findChan(current_chan);
-	if (!finded_chan) //No chan We create it
-	{
-		Channel *new_chan = new Channel(current_chan, _client);
-		_client->addChannel(new_chan);
-		(_all_channels).push_back(new_chan);
-		_actual_chan = new_chan;
-		msgJoin(current_chan, new_chan);
-	}
-	else //Chan already exist
-	{
-		_client->addChannel(finded_chan);
-		(finded_chan)->addClient(_client); 
-		_actual_chan = finded_chan;
-		msgJoin(current_chan, finded_chan);
-	}
-}
-
 // NAME REPLY
 void Command::nameReply(std::string chan_name, Channel *chan)
 {
@@ -708,10 +553,57 @@ void Command::nameReply(std::string chan_name, Channel *chan)
 	sendToClient(366); //RPL_ENDOFNAMES
 }
 
-void Command::clearChan(Channel *chan, Client *client)
+// INVITE
+void	Command::invite()
 {
-	chan->deleteClient(client);
-	client->leaveChannel(chan);
+	if (DEBUG)
+		std::cout << "Command::invite" << std::endl;
+	if ((*_cmd)[_actual_cmd].size() != 3) //si on en a 6 on envoi need more params, c est fifou?
+	{
+		sendToClient(461); //ERR_NEEDMOREPARAMS
+		return ;
+	}
+	std::string target_name = (*_cmd)[_actual_cmd][1];
+	std::string name = (*_cmd)[_actual_cmd][2];
+	Channel *finded_chan = findChan(name);
+	_bad_chan_name = name;
+	_actual_chan = finded_chan;
+	if (!finded_chan)
+	{
+		sendToClient(403); //ERR_NOSUCHCHANNEL
+		return ;
+	}
+	std::vector<Client *> *listClients = finded_chan->getListClients();
+	for (std::vector<Client *>::iterator it = listClients->begin() ; it != listClients->end() ; ++it)
+	{
+		if ((*it)->getNickname() == _client->getNickname())
+		{
+			for (std::vector<Client *>::iterator it1 = listClients->begin() ; it1 != listClients->end() ; ++it1)
+			{
+				if ((*it1)->getNickname() == target_name) //is already on chan?
+				{
+					sendToClient(443); //ERR_USERONCHANNEL
+					return ;
+				}
+			}
+			for (std::map<int, Client *>::iterator it1 = (*_clients_ptr).begin() ; it1 != (*_clients_ptr).end() ; ++it1) 
+			{
+				if ((*it1).second->getNickname() == target_name) //is target existing?
+				{
+					std::string msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " INVITE " + target_name + " " + _actual_chan->getName() + "\r\n";
+					if (DEBUG)
+						std::cout << "MSG = " << msg << std::endl;
+					send((*it1).first, msg.c_str(), msg.size(), 0);	
+					sendToClient(341); //RPL_INVITING
+					return ;
+				}
+			}
+			sendToClient(401); //ERR_NOSUCHNICK
+			return ;
+		}
+	}
+	sendToClient(442); //ERR_NOTONCHANNEL
+	return ;		
 }
 
 // KICK
@@ -773,6 +665,154 @@ void Command::kick()
 	return ;
 }
 
+// SERVER QUERIES AND COMMANDS
+// MODE
+void	Command::mode()
+{
+	if (DEBUG)
+		std::cout << "Command::mode" << std::endl;
+	if ((*_cmd)[_actual_cmd].size() < 2)
+	{
+		sendToClient(461); //ERR_NEEDMOREPARAMS
+		return ;
+	}
+	std::string target_name = (*_cmd)[_actual_cmd][1];
+	_cmd_availables["TOPIC"] = &Command::topic;
+	if ((*_cmd)[_actual_cmd][1][0] == '#')
+	{
+		//Channel part
+		for(std::vector<Channel *>::iterator it = (_all_channels).begin() ; it != (_all_channels).end() ; ++it)
+		{
+			if ((*it)->getName() == target_name)
+			{
+				_actual_chan = (*it);
+				if ((*_cmd)[_actual_cmd].size() == 2)
+				{
+					sendToClient(324); //RPL_CHANNELMODEIS
+					return ;
+				}
+				sendToClient(477); //ERR_NOCHANMODES
+				return;
+			}
+		}
+		_bad_chan_name = target_name; 
+		sendToClient(403); //ERR_NOSUCHCHANNEL
+
+	}
+	else
+	{
+		//User part
+		if (!checkNickname((*_cmd)[_actual_cmd][1]))
+		{
+			sendToClient(401); //ERR_NOSUCHNICK 
+			return ;
+		}
+		if ((*_cmd)[_actual_cmd][1] != (*_client).getNickname())
+		{
+			sendToClient(502); //ERR_USERSDONTMATCH 
+			return ;
+		}
+		if ((*_cmd)[_actual_cmd].size() == 2)
+		{
+			sendToClient(221); //RPL_UMODEIS 
+			return ;
+		}
+		if ((*_cmd)[_actual_cmd][2][0] == '-')
+		{
+			if ((*_cmd)[_actual_cmd][2].size() == 2 && (*_cmd)[_actual_cmd][2][1] == 'o')
+			{
+				(*_client).setOper(false);
+				sendToClient(221); //RPL_UMODEIS 
+				return ;
+			}
+		}
+		sendToClient(501); //ERR_UMODEUNKNOWNFLAG
+	}
+}
+
+// SENDING MESSAGES
+// PRIVMSG
+void	Command::privmsg()
+{
+	if (DEBUG)
+		std::cout << "Command::privmsg" << std::endl;
+	if ((*_cmd)[_actual_cmd].size() == 1)
+	{
+		sendToClient(461); //ERR_NEEDMOREPARAMS
+		return ;
+	}
+	else if ((*_cmd)[_actual_cmd].size() == 2)
+	{
+		sendToClient(412);
+		return ;
+	}
+	std::string target_name = (*_cmd)[_actual_cmd][1];
+	//Channel part
+	if (target_name[0] == '#')
+	{
+		for(std::vector<Channel *>::iterator it = (_all_channels).begin() ; it != (_all_channels).end() ; ++it)
+		{
+			if ((*it)->getName() == target_name)
+			{
+				_actual_chan = (*it);
+				sendToChannel((*it), false);
+				return ;
+			}
+		}
+		sendToClient(404); //ERR_CANNOTSENDTOCHAN
+	}
+	else //CLient part
+	{
+		if (!checkNickname(target_name))
+		{
+			sendToClient(401); //ERR_NOSUCHNICK 
+			return ;
+		}
+		for (std::map<int, Client *>::iterator it = (*_clients_ptr).begin() ; it != (*_clients_ptr).end() ; ++it)
+		{
+			if ((*it).second->getNickname() == target_name) 
+			{
+				sendToTarget(target_name, (*it).first, false);
+				return ;
+			}
+		}
+	}
+	sendToClient(401); //ERR_NOSUCHNICK (401)			
+}
+
+// NOTICE == SAME AS privmsg BUT NEVER SEND AUTOMATIC REPLY
+void	Command::notice()
+{
+	if (DEBUG)
+		std::cout << "Command::notice" << std::endl;
+	if ((*_cmd)[_actual_cmd].size() < 3)
+		return ;
+	std::string target_name = (*_cmd)[_actual_cmd][1];
+	if (target_name[0] == '#') //Channel part
+	{
+		for(std::vector<Channel *>::iterator it = (_all_channels).begin() ; it != (_all_channels).end() ; ++it)
+		{
+			if ((*it)->getName() == target_name)
+			{
+				sendToChannel((*it), true);
+				return ;
+			}
+		}
+	}
+	else //Client part
+	{
+		for (std::map<int, Client *>::iterator it = (*_clients_ptr).begin() ; it != (*_clients_ptr).end() ; ++it)
+		{
+			if ((*it).second->getNickname() == target_name) 
+			{
+				sendToTarget(target_name, (*it).first, true);
+				return ;
+			}
+		}
+	}
+}
+
+// OPERATOR MESSAGES
 // KILL
 /*
    When a client is removed as the result of a KILL message, the server
@@ -834,194 +874,8 @@ void Command::kill()
 	*_fatal_error = true;
 }
 
-// QUIT
-void	Command::quit()
-{
-	if (DEBUG)
-		std::cout << "Command::quit" << std::endl;
-	std::string msg;
-	std::string reason;
-	msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " QUIT :";
-	if ((*_cmd)[_actual_cmd].size() == 2 && (*_cmd)[_actual_cmd][1] == ":leaving")
-	{
-		reason = "Quit: ";
-		msg += reason;
-	}
-	else
-	{
-		reason = "Quit";
-		for(std::vector<std::string>::iterator it = (*_cmd)[_actual_cmd].begin() + 1 ; it != (*_cmd)[_actual_cmd].end() ; ++it)
-		{
-			if (it != (*_cmd)[_actual_cmd].begin() + 1)
-				reason += " ";
-			else
-			{
-				std::string tmp;
-				tmp = (*it);
-				tmp.insert(1, " ");
-				(*it) = tmp;
-			}
-			reason += *it;
-		}
-		msg += reason;
-	}
-	msg += "\r\n";
-	std::cout << "msg = " << msg << std::endl;
-	//on parcoure tous les chans du client
-	for (std::vector<Channel *>::iterator it = (_client->getClientChannels())->begin() ; it != (_client->getClientChannels())->end() ; ++it)
-	{
-		//on parcoure tous les clients du chan
-		for(std::vector<Client *>::iterator it2 = ((*it)->getListClients())->begin() ; it2 != ((*it)->getListClients())->end() ; ++it2)
-		{
-			if ((*it2) != _client)
-				send((*it2)->getSock(), msg.c_str(), msg.size(), 0);
-		}
-	}
-	fatalError(msg);
-}
-
-// NOTICE == SAME AS privmsg BUT NEVER SEND AUTOMATIC REPLY
-void	Command::notice()
-{
-	if (DEBUG)
-		std::cout << "Command::notice" << std::endl;
-	if ((*_cmd)[_actual_cmd].size() < 3)
-		return ;
-	std::string target_name = (*_cmd)[_actual_cmd][1];
-	if (target_name[0] == '#') //Channel part
-	{
-		for(std::vector<Channel *>::iterator it = (_all_channels).begin() ; it != (_all_channels).end() ; ++it)
-		{
-			if ((*it)->getName() == target_name)
-			{
-				sendToChannel((*it), true);
-				return ;
-			}
-		}
-	}
-	else //Client part
-	{
-		for (std::map<int, Client *>::iterator it = (*_clients_ptr).begin() ; it != (*_clients_ptr).end() ; ++it)
-		{
-			if ((*it).second->getNickname() == target_name) 
-			{
-				sendToTarget(target_name, (*it).first, true);
-				return ;
-			}
-		}
-	}
-}
-
-// PRIVMSG
-void	Command::privmsg()
-{
-	if (DEBUG)
-		std::cout << "Command::privmsg" << std::endl;
-	if ((*_cmd)[_actual_cmd].size() == 1)
-	{
-		sendToClient(461); //ERR_NEEDMOREPARAMS
-		return ;
-	}
-	else if ((*_cmd)[_actual_cmd].size() == 2)
-	{
-		sendToClient(412);
-		return ;
-	}
-	std::string target_name = (*_cmd)[_actual_cmd][1];
-	//Channel part
-	if (target_name[0] == '#')
-	{
-		for(std::vector<Channel *>::iterator it = (_all_channels).begin() ; it != (_all_channels).end() ; ++it)
-		{
-			if ((*it)->getName() == target_name)
-			{
-				_actual_chan = (*it);
-				sendToChannel((*it), false);
-				return ;
-			}
-		}
-		sendToClient(404); //ERR_CANNOTSENDTOCHAN
-	}
-	else //CLient part
-	{
-		if (!checkNickname(target_name))
-		{
-			sendToClient(401); //ERR_NOSUCHNICK 
-			return ;
-		}
-		for (std::map<int, Client *>::iterator it = (*_clients_ptr).begin() ; it != (*_clients_ptr).end() ; ++it)
-		{
-			if ((*it).second->getNickname() == target_name) 
-			{
-				sendToTarget(target_name, (*it).first, false);
-				return ;
-			}
-		}
-	}
-	sendToClient(401); //ERR_NOSUCHNICK (401)			
-}
-
 // SEND TO
-// PRIVMSG TARGET
-void Command::sendToTarget(std::string target_name, int target_socket, bool is_notice)
-{
-	if (DEBUG)
-		std::cout << "target name puis target socket " << target_name << " "<< target_socket << std::endl;
-	std::string msg;
-	if (is_notice)
-		msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " NOTICE " + target_name + " " ;
-	else
-		msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " PRIVMSG " + target_name + " " ;
-	for(std::vector<std::string>::iterator it2 = (*_cmd)[_actual_cmd].begin() + 2 ; it2 != (*_cmd)[_actual_cmd].end() ; ++it2)
-	{
-		if (it2 != (*_cmd)[_actual_cmd].begin() + 2)
-			msg += " ";
-		msg += *it2;
-	}
-	msg += "\r\n";
-	if (DEBUG)
-		std::cout << "MSG ="<< msg << std::endl;
-	send(target_socket, msg.c_str(), msg.size(), 0);
-}
-
-// PRIVMSG CHANNEL
-void Command::sendToChannel(Channel *channel, bool is_notice)
-{
-	std::string msg;
-	if (is_notice)
-		msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@localhost NOTICE " + (*channel).getName()  + " " ;
-	else
-		msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@localhost PRIVMSG " + (*channel).getName()  + " " ;
-	for(std::vector<std::string>::iterator it = (*_cmd)[_actual_cmd].begin() + 2 ; it != (*_cmd)[_actual_cmd].end() ; ++it)
-	{
-		if (it != (*_cmd)[_actual_cmd].begin() + 2)
-			msg += " ";
-		msg += *it;
-	}
-	msg += "\r\n";
-	if (DEBUG)
-		std::cout << "MSG ="<< msg << std::endl;
-	std::vector<Client *> *clicli = (*channel).getListClients();
-	for (std::vector<Client *>::iterator it2 = clicli->begin() ; it2 != clicli->end() ; ++it2)
-	{
-		if ((*it2) != _client)
-			send((*it2)->getSock(), msg.c_str(), msg.size(), 0);
-	}
-}
-
-std::string Command::getTime()
-{
-	time_t     now = time(0);
-	struct tm  tstruct;
-	char       buf[80];
-	tstruct = *localtime(&now);
-	strftime(buf, sizeof(buf), "%Y-%m-%d.%X", &tstruct);
-	std::string return_s(buf);
-
-	return (return_s);
-}
-
-//NUMERIC REPLIES
+// NUMERIC REPLIES
 void Command::sendToClient(int numeric_replies)
 {
 	std::string msg;
@@ -1252,6 +1106,164 @@ void Command::sendToClient(int numeric_replies)
 	send(_client_socket, msg.c_str(), msg.size(), 0);
 }
 
+// PRIVMSG TARGET
+void Command::sendToTarget(std::string target_name, int target_socket, bool is_notice)
+{
+	if (DEBUG)
+		std::cout << "target name puis target socket " << target_name << " "<< target_socket << std::endl;
+	std::string msg;
+	if (is_notice)
+		msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " NOTICE " + target_name + " " ;
+	else
+		msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " PRIVMSG " + target_name + " " ;
+	for(std::vector<std::string>::iterator it2 = (*_cmd)[_actual_cmd].begin() + 2 ; it2 != (*_cmd)[_actual_cmd].end() ; ++it2)
+	{
+		if (it2 != (*_cmd)[_actual_cmd].begin() + 2)
+			msg += " ";
+		msg += *it2;
+	}
+	msg += "\r\n";
+	if (DEBUG)
+		std::cout << "MSG ="<< msg << std::endl;
+	send(target_socket, msg.c_str(), msg.size(), 0);
+}
+
+// PRIVMSG CHANNEL
+void Command::sendToChannel(Channel *channel, bool is_notice)
+{
+	std::string msg;
+	if (is_notice)
+		msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@localhost NOTICE " + (*channel).getName()  + " " ;
+	else
+		msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@localhost PRIVMSG " + (*channel).getName()  + " " ;
+	for(std::vector<std::string>::iterator it = (*_cmd)[_actual_cmd].begin() + 2 ; it != (*_cmd)[_actual_cmd].end() ; ++it)
+	{
+		if (it != (*_cmd)[_actual_cmd].begin() + 2)
+			msg += " ";
+		msg += *it;
+	}
+	msg += "\r\n";
+	if (DEBUG)
+		std::cout << "MSG ="<< msg << std::endl;
+	std::vector<Client *> *clicli = (*channel).getListClients();
+	for (std::vector<Client *>::iterator it2 = clicli->begin() ; it2 != clicli->end() ; ++it2)
+	{
+		if ((*it2) != _client)
+			send((*it2)->getSock(), msg.c_str(), msg.size(), 0);
+	}
+}
+
+// UTILS
+std::vector<std::string> Command::splitCommas(std::string listchans)
+{
+	std::vector<std::string> vect_chan;
+	std::string tmp;
+	for(std::string::iterator it = listchans.begin() ; it != listchans.end() ; ++it)
+	{
+		if ((*it) == ',')
+		{
+			vect_chan.push_back(tmp);
+			tmp.clear();
+		}
+		if ((*it) != ',')
+			tmp.push_back((*it));
+	}
+	if (tmp.size() > 0)
+		vect_chan.push_back(tmp);
+	return (vect_chan);
+}
+
+std::vector<Channel *>::iterator Command::returnItChan(std::string chan_name)
+{
+	for(std::vector<Channel *>::iterator it = (_all_channels).begin() ; it != (_all_channels).end() ; ++it)
+	{
+		if ((*it)->getName() == chan_name)
+			return (it);
+	}
+	return (_all_channels.end());
+}
+
+void 	Command::checkIfEmptyChan()
+{
+	std::vector<Channel *> tmp;
+	for (std::vector<Channel *>::iterator it = (_all_channels).begin() ; it != (_all_channels).end() ; ++it)
+	{
+		if ((*it)->getListClients()->size() == 0)
+			tmp.push_back(*it);
+	}
+	for (std::vector<Channel *>::iterator it = tmp.begin() ; it != tmp.end() ; ++it)
+	{
+			(_all_channels).erase(returnItChan((*it)->getName()));
+			delete ((*it));
+	}
+}
+
+int Command::parsingNickname(std::string nickname)
+{
+	//find renvoie npos si aucune occurence n'a été trouvée, sinon ça renvoie l'endroit ou l'occurence à été trouvée
+	std::string forbidden(" ,*?!@.");
+	if (nickname.size() > 9)
+		return (0);
+	if (nickname[0] == '$' || nickname[0] == ':' || forbidden.find(nickname[0], 0) != std::string::npos)
+		return (0);
+	for (std::string::iterator it = nickname.begin() + 1 ; it != nickname.end() ; it++)
+	{
+		if (forbidden.find((*it), 0) != std::string::npos)
+			return (0);
+	}
+	return (1);
+}
+
+int Command::checkNickname(std::string nickname)
+{
+	for (std::map<int, Client *>::iterator it = (*_clients_ptr).begin() ; it != (*_clients_ptr).end() ; ++it)
+	{
+		if ((*it).second->getNickname() == nickname)
+			return (1);
+	}
+	return (0);
+}
+
+int Command::parsingRealname(std::string realname)
+{
+	if (realname[0] != ':')
+		return (0);
+	return (1);
+}
+
+Channel *Command::findChan(std::string chan_name)
+{
+	if ((_all_channels).empty())
+		return (NULL);
+	for (std::vector<Channel *>::iterator it = (_all_channels).begin() ; it != (_all_channels).end() ; ++it)
+		if ((*it)->getName() == chan_name)
+			return (*it);
+	return (NULL);
+}
+
+std::vector<Channel *> Command::getAllChannels()
+{
+	return (_all_channels);
+}
+
+void Command::clearChan(Channel *chan, Client *client)
+{
+	chan->deleteClient(client);
+	client->leaveChannel(chan);
+}
+
+std::string Command::getTime()
+{
+	time_t     now = time(0);
+	struct tm  tstruct;
+	char       buf[80];
+	tstruct = *localtime(&now);
+	strftime(buf, sizeof(buf), "%Y-%m-%d.%X", &tstruct);
+	std::string return_s(buf);
+
+	return (return_s);
+}
+
 std::string Command::insert_zeros(int nbr)
 {
 	std::string tmp("");
@@ -1266,30 +1278,4 @@ std::string Command::insert_zeros(int nbr)
 		return (tmp);
 	}
 	return(tmp);
-}
-
-// ERROR
-void Command::fatalError(std::string msg_error)
-{
-	std::string msg;
-	msg = ":" + _client->getNickname() + " " + "ERROR" + " " + msg_error + "\r\n";
-	if (DEBUG)
-		std::cout << msg << std::endl;
-	send(_client_socket, msg.c_str(), msg.size(), 0);
-	*_fatal_error = true;
-	closeConnection(_client_socket);
-}
-
-void Command::closeConnection(int close_socket)
-{
-	//before check if user in channel
-	close(close_socket);
-	//free?
-	(*_clients_ptr).erase(close_socket);
-}
-
-// CHANNELS PART
-std::vector<Channel *> Command::getAllChannels()
-{
-	return (_all_channels);
 }
