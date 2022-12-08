@@ -2,8 +2,7 @@
 #include "signals.hpp"
 #include "main.h"
 
-std::map<int, Client *> *g_clients = NULL;
-std::vector<Channel *> *g_channels = NULL;
+bool signal_bool;
 
 int main(int ac, char **av)
 {
@@ -22,8 +21,14 @@ int main(int ac, char **av)
 	Server irc(port, password);
 	signal(SIGINT, handle);
 	while (1)
-	{	
+	{
+		signal_bool = false;
 		irc.run();
+		if (signal_bool == true)
+		{
+			std::cout << "SIGNAL BOOL TRUE DANS MAIN" << std::endl;
+			return (0);
+		}
 	}
 	return (0);
 }

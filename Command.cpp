@@ -3,7 +3,6 @@
 Command::Command(std::map<int, Client *> *client_map, std::string password, bool *fatal_error):
 	_clients_ptr(client_map), _password(password), _correctPass(false), _server_name("localhost"), _oper_name("coco"), _oper_pass("toto"), _bad_chan_name(), _bad_chan_bool(false), _bad_nickname(), _fatal_error(fatal_error), _creationTime(getTime()) 
 {
-	g_channels = &(_all_channels);
 	_cmd_list.push_back("MODE");
 	_cmd_list.push_back("OPER");
 	_cmd_list.push_back("CAP");
@@ -43,6 +42,11 @@ Command::Command(std::map<int, Client *> *client_map, std::string password, bool
 Command::~Command()
 {
 	std::cout << "COMMANDE DESTRUCTOOOOOOOOOOOOOOOOR" << std::endl;
+	std::vector<Channel *> tmp;
+	for(std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
+		tmp.push_back(*it);
+	for (std::vector<Channel *>::iterator it = tmp.begin() ; it != tmp.end() ; ++it)
+			delete (*it);
 }
 
 // COMMANDS MAIN FUNCTIONS
@@ -246,7 +250,7 @@ void	Command::oper()
 	if ((*_cmd)[_actual_cmd][1] == _oper_name && (*_cmd)[_actual_cmd][2] == _oper_pass)
 	{
 		_client->setOper(true);
-		sendToClient(381); // 
+		sendToClient(381); //RPL_YOUREOPER 
 		sendToClient(221); //RPL_UMODEIS 
 		return ;
 	}
@@ -320,7 +324,6 @@ void Command::fatalError(std::string msg_error)
 
 void Command::closeConnection(int close_socket)
 {
-	//before check if user in channel
 	close(close_socket);
 	//free?
 	(*_clients_ptr).erase(close_socket);
