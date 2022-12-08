@@ -63,8 +63,8 @@ _port(port), _pass(password), _fatal_error(false) ,_cmd(&_clients, password, &_f
 	*/
 	if (bind(listened_sock, (struct sockaddr *)&addr, sizeof(addr)) < 0)
 		throw Server::ErrnoEx();
-	//10 est le nombre max de clients à faire la queue
-	if (listen(listened_sock, 10) < 0)
+	//10 est le nombre max de clients à faire la queue VERIF QUE C BIEN MAX CLIENT
+	if (listen(listened_sock, MAX_CLIENTS) < 0)
 		throw Server::ErrnoEx();
 	_fds.push_back(pollfd());
 	_fds.back().fd = listened_sock;
@@ -108,8 +108,11 @@ void Server::run()
 				{
 					_fatal_error = false;
 					_cmd.readCmd((*it).fd);
-				if (_fatal_error == true)
-					_sock_to_remove.push_back((*it).fd);
+					if (_fatal_error == true)
+					{
+						_sock_to_remove.push_back(_cmd.getSockToRemove());
+						removeClient(_cmd.getSockToRemove());
+					}
 				}
 			}
 		}
@@ -152,8 +155,9 @@ void Server::check_new_client()
 	_fds.back().events = POLLIN;
 }
 
-void	Server::removeClient(int const &sock_to_remove)
+void	Server::removeClient(int const sock_to_remove)
 {
 	close(sock_to_remove);
+	delete (_clients)[sock_to_remove];
 	_clients.erase(sock_to_remove);
 }

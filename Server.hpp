@@ -20,7 +20,7 @@
 # include "main.h"
 
 # define PING 60
-# define MAX_CLIENTS 60
+# define MAX_CLIENTS 10
 
 class Server
 {
@@ -40,7 +40,7 @@ class Server
 		void run();
 		void check_new_client();
 		void sendPing();
-		void removeClient(int const &sock_to_remove);
+		void removeClient(int const sock_to_remove);
 		void registerClient(int const &client_sock);
 
 	private:

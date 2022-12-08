@@ -148,6 +148,12 @@ void	Command::nick()
 {
 	if (DEBUG)
 		std::cout << "Command::nick" << std::endl;
+	if (!_correctPass)
+	{
+		sendToClient(464); //ERR_PASSWDMISMATCH
+		fatalError("You should connect with a password.");
+		return ;
+	}
 	if (!parsingNickname((*_cmd)[_actual_cmd][1]) || (*_cmd)[_actual_cmd].size() > 2)
 	{
 		sendToClient(432); //ERR_ERRONEUSNICKNAME
@@ -226,6 +232,7 @@ void	Command::user()
 		_client->setRealname((*_cmd)[_actual_cmd][4]);
 	}
 	_client->setStatus(REGISTER);
+	//gerer avec NICK deja existant
 	sendToClient(1);
 	sendToClient(2);
 	sendToClient(3);
@@ -235,6 +242,8 @@ void	Command::user()
 // OPER
 void	Command::oper()
 {
+	// +O add mode
+	// deja operator?
 	if (DEBUG)
 		std::cout << "Command::oper" << std::endl;
 	if ((*_cmd)[_actual_cmd].size() != 3)
@@ -293,7 +302,8 @@ void	Command::quit()
 		msg += reason;
 	}
 	msg += "\r\n";
-	std::cout << "msg = " << msg << std::endl;
+	if (DEBUG)
+		std::cout << "msg = " << msg << std::endl;
 	//on parcoure tous les chans du client
 	for (std::vector<Channel *>::iterator it = (_client->getClientChannels())->begin() ; it != (_client->getClientChannels())->end() ; ++it)
 	{
@@ -307,6 +317,7 @@ void	Command::quit()
 	for(std::vector<Channel *>::iterator it = _client->getClientChannels()->begin() ; it != _client->getClientChannels()->end() ; ++it)
 		clearChan((*it), _client);
 	checkIfEmptyChan();
+	_sock_to_remove = _client->getSock();
 	fatalError(msg);
 }
 
@@ -319,14 +330,6 @@ void Command::fatalError(std::string msg_error)
 		std::cout << msg << std::endl;
 	send(_client_socket, msg.c_str(), msg.size(), 0);
 	*_fatal_error = true;
-	closeConnection(_client_socket);
-}
-
-void Command::closeConnection(int close_socket)
-{
-	close(close_socket);
-	//free?
-	(*_clients_ptr).erase(close_socket);
 }
 
 // CHANNEL OPERATIONS
@@ -869,8 +872,9 @@ void Command::kill()
 	msg += " KILL " + (*_cmd)[_actual_cmd][1] + " :" + reason_of_kill + "\r\n";
 	send(socket_killed, msg.c_str(), msg.size(), 0);
 
-	msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name;
-	msg += " QUIT " + (*_cmd)[_actual_cmd][1] + " :";
+	//Il faut spread ce message a tout les gens qui partagent un chan avec la socket_killed
+	msg = ":" + (*_clients_ptr)[socket_killed]->getNickname() + "!" + (*_clients_ptr)[socket_killed]->getUsername() + "@" + _server_name;
+	msg += " QUIT :";
 	msg += "Killed (" + _client->getNickname() + "(" + reason_of_kill + "))\r\n";
 	send(socket_killed, msg.c_str(), msg.size(), 0);
 
@@ -887,8 +891,13 @@ void Command::kill()
 		}
 	}
 	checkIfEmptyChan();
-	closeConnection(socket_killed);
+	_sock_to_remove = socket_killed;
 	*_fatal_error = true;
+}
+
+int Command::getSockToRemove()
+{
+	return (_sock_to_remove);
 }
 
 // SEND TO

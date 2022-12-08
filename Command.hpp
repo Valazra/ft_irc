@@ -24,6 +24,7 @@ class Command
 		void readCmd(int client_socket);
 		void execCmd();
 		void splitCommand(std::string msg);
+		int getSockToRemove();
 
 
 	private:
@@ -96,6 +97,7 @@ class Command
 		std::string _bad_nickname;
 		//ERROR
 		bool *_fatal_error;
+		int _sock_to_remove;
 		//Time
 		std::string _creationTime;
 		//Close
