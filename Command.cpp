@@ -298,6 +298,9 @@ void	Command::quit()
 				send((*it2)->getSock(), msg.c_str(), msg.size(), 0);
 		}
 	}
+	for(std::vector<Channel *>::iterator it = _client->getClientChannels()->begin() ; it != _client->getClientChannels()->end() ; ++it)
+		clearChan((*it), _client);
+	checkIfEmptyChan();
 	fatalError(msg);
 }
 
@@ -870,6 +873,15 @@ void Command::kill()
 	msg += " ERROR :Closing Link: " + _server_name;
 	msg += "(Killed (" + _client->getNickname() + "(" + reason_of_kill + ")))\r\n";
 	send(socket_killed, msg.c_str(), msg.size(), 0);
+	for(std::map<int, Client *>::iterator it = _clients_ptr->begin() ; it != _clients_ptr->end() ; ++it)
+	{
+		if ((*it).second->getNickname() == (*_cmd)[_actual_cmd][1])
+		{
+			for(std::vector<Channel *>::iterator it2 = (*it).second->getClientChannels()->begin() ; it2 != (*it).second->getClientChannels()->end() ; ++it2)
+				clearChan((*it2), (*it).second);
+		}
+	}
+	checkIfEmptyChan();
 	closeConnection(socket_killed);
 	*_fatal_error = true;
 }
