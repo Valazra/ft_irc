@@ -3,6 +3,7 @@
 Server::Server(std::string port, std::string password): 
 _port(port), _pass(password), _fatal_error(false) ,_cmd(&_clients, password, &_fatal_error), _sock_to_remove()
 {
+	g_clients = &(_clients);
 	int listened_sock;
 	// int socket(int domain, int type, int protocol);
 	// domain: PF_INET Protocoles Internet IPv4 ou PF_INET6 Protocoles Internet IPv6
@@ -76,6 +77,7 @@ _port(port), _pass(password), _fatal_error(false) ,_cmd(&_clients, password, &_f
 
 Server::~Server()
 {
+	std::cout << "SERVER DESTRUCTOOOOOOOOOOOR" << std::endl;
 }
 
 void Server::run()

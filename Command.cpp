@@ -3,6 +3,7 @@
 Command::Command(std::map<int, Client *> *client_map, std::string password, bool *fatal_error):
 	_clients_ptr(client_map), _password(password), _correctPass(false), _server_name("localhost"), _oper_name("coco"), _oper_pass("toto"), _bad_chan_name(), _bad_chan_bool(false), _bad_nickname(), _fatal_error(fatal_error), _creationTime(getTime()) 
 {
+	g_channels = &(_all_channels);
 	_cmd_list.push_back("MODE");
 	_cmd_list.push_back("OPER");
 	_cmd_list.push_back("CAP");
@@ -41,6 +42,7 @@ Command::Command(std::map<int, Client *> *client_map, std::string password, bool
 
 Command::~Command()
 {
+	std::cout << "COMMANDE DESTRUCTOOOOOOOOOOOOOOOOR" << std::endl;
 }
 
 // COMMANDS MAIN FUNCTIONS

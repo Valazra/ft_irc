@@ -1,17 +1,18 @@
 #ifndef COMMAND_HPP
 # define COMMAND_HPP
 
-#include "Client.hpp"
-#include "Channel.hpp"
-#include "to_string.hpp"
-#include <map>
-#include <string>
-#include <ostream>
-#include <iostream>
-#include <vector>
-#include <iostream>
-#include <stdio.h>
-#include <time.h>
+# include "Client.hpp"
+# include "Channel.hpp"
+# include "to_string.hpp"
+# include <map>
+# include <string>
+# include <ostream>
+# include <iostream>
+# include <vector>
+# include <iostream>
+# include <stdio.h>
+# include <time.h>
+# include "main.h"
 # define DEBUG 1
 
 class Server;

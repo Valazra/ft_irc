@@ -11,5 +11,4 @@ std::string to_string(T n)
 	return (ss.str());
 }	
 
-
 #endif

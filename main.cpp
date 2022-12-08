@@ -1,4 +1,9 @@
 #include "Server.hpp"
+#include "signals.hpp"
+#include "main.h"
+
+std::map<int, Client *> *g_clients = NULL;
+std::vector<Channel *> *g_channels = NULL;
 
 int main(int ac, char **av)
 {
@@ -15,6 +20,7 @@ int main(int ac, char **av)
 		password = av[2];
 	}
 	Server irc(port, password);
+	signal(SIGINT, handle);
 	while (1)
 	{	
 		irc.run();

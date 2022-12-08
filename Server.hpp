@@ -17,6 +17,7 @@
 # include <map>
 # include "Client.hpp"
 # include "Command.hpp"
+# include "main.h"
 
 # define PING 60
 # define MAX_CLIENTS 60
