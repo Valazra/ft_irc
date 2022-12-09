@@ -172,10 +172,7 @@ void Client::setOper(bool oper)
 
 std::string Client::getOptions()
 {
-	std::string msg;
-
-	msg = "+ ";
-	msg += _options;
+	std::string msg = _options;
 	return (msg);
 }
 

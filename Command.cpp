@@ -73,7 +73,7 @@ void Command::execCmd()
 		if (!check_if_valid_cmd(it->front()))
 		{
 			sendToClient(421); //ERR_UNKNOWNCOMMAND
-			return ;
+			continue ;
 		}
 		(this->*_cmd_availables[it->front()])();
 		if (*_fatal_error)
@@ -151,7 +151,7 @@ void	Command::nick()
 	if (!_correctPass)
 	{
 		sendToClient(464); //ERR_PASSWDMISMATCH
-		fatalError("You should connect with a password.");
+		fatalError("You should connect with a password before NICK and USER.");
 		return ;
 	}
 	if (!parsingNickname((*_cmd)[_actual_cmd][1]) || (*_cmd)[_actual_cmd].size() > 2)
@@ -208,7 +208,7 @@ void	Command::user()
 	if (!_correctPass)
 	{
 		sendToClient(464); //ERR_PASSWDMISMATCH
-		fatalError("You should connect with a password.");
+		fatalError("You should connect with a password before NICK and USER.");
 		return ;
 	}
 	//si le status est pas sur TO_REGISTER alors on va dans le if
@@ -239,11 +239,15 @@ void	Command::user()
 	sendToClient(4);
 }
 
+/*
+ * Local Oper User Mode
+ * This mode is standard, and the mode letter used for it is "+O".
+ * If a user has this mode, this indicates that they are a server operator.
+ * A local operator has operator privileges for their server, and not for the rest of the network.
+*/
 // OPER
 void	Command::oper()
 {
-	// +O add mode
-	// deja operator?
 	if (DEBUG)
 		std::cout << "Command::oper" << std::endl;
 	if ((*_cmd)[_actual_cmd].size() != 3)
@@ -259,6 +263,7 @@ void	Command::oper()
 	if ((*_cmd)[_actual_cmd][1] == _oper_name && (*_cmd)[_actual_cmd][2] == _oper_pass)
 	{
 		_client->setOper(true);
+		_client->changeOptions("O", true);
 		sendToClient(381); //RPL_YOUREOPER 
 		sendToClient(221); //RPL_UMODEIS 
 		return ;
@@ -735,9 +740,17 @@ void	Command::mode()
 		}
 		if ((*_cmd)[_actual_cmd][2][0] == '-')
 		{
-			if ((*_cmd)[_actual_cmd][2].size() == 2 && (*_cmd)[_actual_cmd][2][1] == 'o')
+			if ((*_cmd)[_actual_cmd].size() == 3 && (*_cmd)[_actual_cmd][2][1] == 'O')
 			{
 				(*_client).setOper(false);
+				(*_client).changeOptions("O", false);
+				sendToClient(221); //RPL_UMODEIS 
+				return ;
+			}
+			if ((*_cmd)[_actual_cmd].size() == 4 && (*_cmd)[_actual_cmd][3][0] == 'O')
+			{
+				(*_client).setOper(false);
+				(*_client).changeOptions("O", false);
 				sendToClient(221); //RPL_UMODEIS 
 				return ;
 			}
@@ -939,7 +952,7 @@ void Command::sendToClient(int numeric_replies)
 			}
 		case 221: //RPL_UMODEIS
 			{
-				msg += _client->getUsername() + _client->getOptions() + "\r\n";	
+				msg += _client->getUsername() + " " + _client->getOptions() + "\r\n";	
 				break ;
 			}
 		case 324: //RPL_CHANNELMODEIS
