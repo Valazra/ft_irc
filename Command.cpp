@@ -109,7 +109,7 @@ void	Command::pass()
 {
 	if (DEBUG)
 		std::cout << "Command::pass | Pass attendu = " << _password << " | Pass recu = " << (*_cmd)[_actual_cmd][1] << std::endl;
-	if (_client->getStatus() != 0)
+	if (_client->getStatus() != TO_REGISTER)
 	{
 		sendToClient(462); //ERR_ALREADYREGISTERED
 		return ;
@@ -238,6 +238,11 @@ void	Command::oper()
 {
 	if (DEBUG)
 		std::cout << "Command::oper" << std::endl;
+	if (_client->getStatus() == TO_REGISTER)
+	{
+		sendToClient(451); //ERR_NOTREGISTERED
+		return ;
+	}
 	if ((*_cmd)[_actual_cmd].size() != 3)
 	{
 		sendToClient(461); //ERR_NEEDMOREPARAMS
@@ -334,6 +339,13 @@ void Command::fatalError(std::string msg_error)
 // JOIN
 void	Command::join()
 {
+	if (DEBUG)
+		std::cout << "Command::join" << std::endl;
+	if (_client->getStatus() == TO_REGISTER)
+	{
+		sendToClient(451); //ERR_NOTREGISTERED
+		return ;
+	}
 	if ((*_cmd)[_actual_cmd].size() == 1)
 	{
 		sendToClient(461); //ERR_NEEDMOREPARAMS
@@ -383,6 +395,11 @@ void	Command::part()
 {
 	if (DEBUG)
 		std::cout << "Command::part" << std::endl;
+	if (_client->getStatus() == TO_REGISTER)
+	{
+		sendToClient(451); //ERR_NOTREGISTERED
+		return ;
+	}
 	if ((*_cmd)[_actual_cmd].size() == 1)
 	{
 		sendToClient(461); //ERR_NEEDMOREPARAMS
@@ -432,6 +449,11 @@ void	Command::topic()
 {
 	if (DEBUG)
 		std::cout << "Command::topic" << std::endl;
+	if (_client->getStatus() == TO_REGISTER)
+	{
+		sendToClient(451); //ERR_NOTREGISTERED
+		return ;
+	}
 	if ((*_cmd)[_actual_cmd].size() == 1)
 	{
 		sendToClient(461); //ERR_NEEDMOREPARAMS
@@ -521,6 +543,11 @@ void	Command::names()
 {
 	if (DEBUG)
 		std::cout << "Command::names" << std::endl;
+	if (_client->getStatus() == TO_REGISTER)
+	{
+		sendToClient(451); //ERR_NOTREGISTERED
+		return ;
+	}
 	std::string chan_name;
 	Channel *finded_chan;
 	std::vector<std::string> vect_chan = splitCommas((*_cmd)[_actual_cmd][1]);
@@ -567,6 +594,11 @@ void	Command::invite()
 {
 	if (DEBUG)
 		std::cout << "Command::invite" << std::endl;
+	if (_client->getStatus() == TO_REGISTER)
+	{
+		sendToClient(451); //ERR_NOTREGISTERED
+		return ;
+	}
 	if ((*_cmd)[_actual_cmd].size() != 3) //si on en a 6 on envoi need more params, c est fifou?
 	{
 		sendToClient(461); //ERR_NEEDMOREPARAMS
@@ -621,6 +653,11 @@ void Command::kick()
 {
 	if (DEBUG)
 		std::cout << "Command::kick" << std::endl;
+	if (_client->getStatus() == TO_REGISTER)
+	{
+		sendToClient(451); //ERR_NOTREGISTERED
+		return ;
+	}
 	if ((*_cmd)[_actual_cmd].size() < 3)
 	{
 		sendToClient(461); //ERR_NEEDMOREPARAMS
@@ -680,6 +717,11 @@ void	Command::mode()
 {
 	if (DEBUG)
 		std::cout << "Command::mode" << std::endl;
+	if (_client->getStatus() == TO_REGISTER)
+	{
+		sendToClient(451); //ERR_NOTREGISTERED
+		return ;
+	}
 	if ((*_cmd)[_actual_cmd].size() < 2)
 	{
 		sendToClient(461); //ERR_NEEDMOREPARAMS
@@ -753,6 +795,11 @@ void	Command::privmsg()
 {
 	if (DEBUG)
 		std::cout << "Command::privmsg" << std::endl;
+	if (_client->getStatus() == TO_REGISTER)
+	{
+		sendToClient(451); //ERR_NOTREGISTERED
+		return ;
+	}
 	if ((*_cmd)[_actual_cmd].size() == 1)
 	{
 		sendToClient(461); //ERR_NEEDMOREPARAMS
@@ -802,6 +849,11 @@ void	Command::notice()
 {
 	if (DEBUG)
 		std::cout << "Command::notice" << std::endl;
+	if (_client->getStatus() == TO_REGISTER)
+	{
+		sendToClient(451); //ERR_NOTREGISTERED
+		return ;
+	}
 	if ((*_cmd)[_actual_cmd].size() < 3)
 		return ;
 	std::string target_name = (*_cmd)[_actual_cmd][1];
@@ -842,6 +894,11 @@ void Command::kill()
 {
 	if (DEBUG)
 		std::cout << "Command::kill" << std::endl;
+	if (_client->getStatus() == TO_REGISTER)
+	{
+		sendToClient(451); //ERR_NOTREGISTERED
+		return ;
+	}
 	if ((*_cmd)[_actual_cmd].size() < 3)
 	{
 		sendToClient(461); //ERR_NEEDMOREPARAMS
@@ -1049,6 +1106,11 @@ void Command::sendToClient(int numeric_replies)
 		case 443: //ERR_USERONCHANNEL
 			{
 				msg += _client->getUsername() + " " + _client->getNickname() + " " + _actual_chan->getName() + " :is already on channel\r\n";
+				break;
+			}
+		case 451: //ERR_NOTREGISTERED
+			{
+				msg += _client->getUsername() +  " :You have not registered\r\n";
 				break;
 			}
 		case 461: //ERR_NEEDMOREPARAMS
