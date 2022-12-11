@@ -39,7 +39,6 @@ class Server
 
 		void run();
 		void check_new_client();
-		void sendPing();
 		void removeClient(int const sock_to_remove);
 		void registerClient(int const &client_sock);
 
@@ -48,6 +47,7 @@ class Server
 		Server(Server const &src);
 		Server &operator=(Server const &src);
 
+		bool isSocketStillOpen(int sock);
 		std::string	_port;
 		std::string	_pass;
 		bool _fatal_error;

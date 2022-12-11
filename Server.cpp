@@ -84,6 +84,16 @@ Server::~Server()
 			delete (*it);
 }
 
+bool Server::isSocketStillOpen(int sock)
+{
+	for (std::vector<int>::iterator it = _sock_to_remove.begin(); it != _sock_to_remove.end(); ++it)
+	{
+		if (sock == *it)
+			return (0);
+	}
+	return (1);
+}
+
 void Server::run()
 {
 	 // int poll(struct pollfd fds[], nfds_t nfds, int timeout);
@@ -101,6 +111,8 @@ void Server::run()
 		{
 			if ((*it).revents == POLLIN)
 			{
+				if (!isSocketStillOpen((*it).fd))
+					continue ;
 				_clients[(*it).fd]->receive();
 				if (_clients[(*it).fd]->getStatus() == REMOVE_ME)
 					removeClient((*it).fd);
@@ -108,10 +120,13 @@ void Server::run()
 				{
 					_fatal_error = false;
 					_cmd.readCmd((*it).fd);
-					if (_fatal_error == true)
+					if (!((_cmd.getSockToRemove()).empty()))
 					{
-						_sock_to_remove.push_back(_cmd.getSockToRemove());
-						removeClient(_cmd.getSockToRemove());
+						for (std::vector<int>::iterator it1 = (_cmd.getSockToRemove()).begin(); it1 != (_cmd.getSockToRemove()).end(); ++it)
+						{
+							_sock_to_remove.push_back(*it1);
+							removeClient(*it1);
+						}
 					}
 				}
 			}

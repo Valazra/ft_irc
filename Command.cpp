@@ -41,7 +41,8 @@ Command::Command(std::map<int, Client *> *client_map, std::string password, bool
 
 Command::~Command()
 {
-	std::cout << "COMMANDE DESTRUCTOOOOOOOOOOOOOOOOR" << std::endl;
+	if (DEBUG)
+		std::cout << "Command::Destructor" << std::endl;
 	std::vector<Channel *> tmp;
 	for(std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
 		tmp.push_back(*it);
@@ -64,6 +65,7 @@ void Command::execCmd()
 {
 	for (std::vector<std::vector<std::string> >::iterator it = (*_cmd).begin(); it != (*_cmd).end(); ++it)
 	{
+//		_sock_to_remove == -1;
 		if ((it->empty()))
 			return ;
 		if (DEBUG)
@@ -84,6 +86,7 @@ void Command::execCmd()
 
 void Command::readCmd(int client_socket)
 {
+	_socks_to_remove.clear();
 	*_fatal_error = false;
 	_client_socket = client_socket;
 	_client = (*_clients_ptr)[client_socket];
@@ -320,7 +323,6 @@ void	Command::quit()
 	//chan->deleteClient(client);
 	//client->leaveChannel(chan);
 	checkIfEmptyChan();
-	_sock_to_remove = _client->getSock();
 	fatalError(msg);
 }
 
@@ -332,7 +334,8 @@ void Command::fatalError(std::string msg_error)
 	if (DEBUG)
 		std::cout << msg << std::endl;
 	send(_client_socket, msg.c_str(), msg.size(), 0);
-	*_fatal_error = true;
+	_socks_to_remove.push_back(_client_socket);
+	*_fatal_error = 1;
 }
 
 // CHANNEL OPERATIONS
@@ -949,13 +952,14 @@ void Command::kill()
 		(*it)->deleteClient(client_killed);
 	client_killed->leaveAllChannels();
 	checkIfEmptyChan();
-	_sock_to_remove = socket_killed;
-	*_fatal_error = true;
+	if (socket_killed == _client_socket)
+		*_fatal_error = 1; 
+	_socks_to_remove.push_back(socket_killed);
 }
 
-int Command::getSockToRemove()
+std::vector<int> Command::getSockToRemove()
 {
-	return (_sock_to_remove);
+	return (_socks_to_remove);
 }
 
 // SEND TO
