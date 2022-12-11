@@ -16,9 +16,7 @@ enum userStatus
 {
 	TO_REGISTER,
 	REMOVE_ME,
-	PASSWORD,
 	REGISTER,
-	ONLINE
 };
 
 class Channel;

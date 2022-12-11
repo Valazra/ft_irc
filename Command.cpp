@@ -90,21 +90,9 @@ void Command::readCmd(int client_socket)
 	_cmd = _client->getCmd();
 	_actual_cmd = 0;
 	_client_status = _client->getStatus();
-	if (_client->getStatus() == TO_REGISTER)
-	{
-		if (DEBUG)
-			std::cout << "Command::readCmd TO_REGISTER" << std::endl;
-		execCmd();
+	execCmd();
+	if ((*_cmd).size() > 0)
 		(*_cmd).clear();
-	}
-	else
-	{
-		if (DEBUG)
-			std::cout << "Command::readCmd REGISTER" << std::endl;
-		execCmd();
-		if ((*_cmd).size() > 0)
-			(*_cmd).clear();
-	}
 }
 
 // CLIENT MESSAGES
