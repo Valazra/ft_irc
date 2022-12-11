@@ -1,7 +1,7 @@
 #include "Command.hpp"
 
 Command::Command(std::map<int, Client *> *client_map, std::string password, bool *fatal_error):
-	_clients_ptr(client_map), _password(password), _correctPass(false), _server_name("localhost"), _oper_name("coco"), _oper_pass("toto"), _bad_chan_name(), _bad_chan_bool(false), _bad_nickname(), _fatal_error(fatal_error), _creationTime(getTime()) 
+	_clients_ptr(client_map), _password(password), _correctPass(false), _server_name(), _oper_name("coco"), _oper_pass("toto"), _bad_chan_name(), _bad_chan_bool(false), _bad_nickname(), _fatal_error(fatal_error), _creationTime(getTime()) 
 {
 	_cmd_list.push_back("MODE");
 	_cmd_list.push_back("OPER");
@@ -225,6 +225,7 @@ void	Command::user()
 	{ 
 		_client->setUsername((*_cmd)[_actual_cmd][1]);
 		_client->setRealname((*_cmd)[_actual_cmd][4]);
+		_server_name = (*_cmd)[_actual_cmd][3];
 	}
 	_client->setStatus(REGISTER);
 	//gerer avec NICK deja existant
@@ -241,6 +242,7 @@ void	Command::user()
  * A local operator has operator privileges for their server, and not for the rest of the network.
 */
 // OPER
+//we decided to ignore when there are too much params, because Irc RFC doesn't specify this comportment
 void	Command::oper()
 {
 	if (DEBUG)
@@ -250,7 +252,7 @@ void	Command::oper()
 		sendToClient(451); //ERR_NOTREGISTERED
 		return ;
 	}
-	if ((*_cmd)[_actual_cmd].size() != 3)
+	if ((*_cmd)[_actual_cmd].size() < 3)
 	{
 		sendToClient(461); //ERR_NEEDMOREPARAMS
 		return ;
@@ -563,6 +565,15 @@ void	Command::names()
 		return ;
 	}
 	std::string chan_name;
+	if ((*_cmd)[_actual_cmd].size() == 1)
+	{
+		for(std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
+		{
+			chan_name = (*it)->getName();
+			nameReply(chan_name, (*it));
+		}
+		return ;
+	}
 	Channel *finded_chan;
 	std::vector<std::string> vect_chan = splitCommas((*_cmd)[_actual_cmd][1]);
 	for (std::vector<std::string>::iterator it = vect_chan.begin() ; it != vect_chan.end() ; ++it)
