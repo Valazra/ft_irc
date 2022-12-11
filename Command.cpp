@@ -111,7 +111,10 @@ void	Command::cap()
 void	Command::pass()
 {
 	if (DEBUG)
-		std::cout << "Command::pass | Pass attendu = " << _password << " | Pass recu = " << (*_cmd)[_actual_cmd][1] << std::endl;
+	{
+		if ((*_cmd)[_actual_cmd].size() > 1)
+			std::cout << "Command::pass | Pass attendu = " << _password << " | Pass recu = " << (*_cmd)[_actual_cmd][1] << std::endl;
+	}
 	if (_client->getStatus() != TO_REGISTER)
 	{
 		sendToClient(462); //ERR_ALREADYREGISTERED
@@ -122,16 +125,17 @@ void	Command::pass()
 		sendToClient(461); //ERR_NEEDMOREPARAMS
 		return ;
 	}
-	if ((*_cmd)[_actual_cmd][1] == _password)
-	{
-		_correctPass = true;
-	}
-	else
+	std::string tmp = (*_cmd)[_actual_cmd][1];
+	for(std::vector<std::string>::iterator it = (*_cmd)[_actual_cmd].begin() + 2 ; it != (*_cmd)[_actual_cmd].end() ; ++it)
+		tmp += " " + *it;
+	if (tmp != _password)
 	{
 		sendToClient(464); //ERR_PASSWDMISMATCH
 		fatalError("You SHOULD connect with the good password.");
 		return ;
 	}
+	else
+		_correctPass = true;
 }
 
 // NICK
@@ -276,16 +280,23 @@ void	Command::quit()
 {
 	if (DEBUG)
 		std::cout << "Command::quit" << std::endl;
+	if (_client->getStatus() == TO_REGISTER)
+	{
+		sendToClient(451); //ERR_NOTREGISTERED
+		return ;
+	}
 	std::string msg;
 	std::string reason;
 	msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " QUIT :";
-	if ((*_cmd)[_actual_cmd].size() == 2 && (*_cmd)[_actual_cmd][1] == ":leaving")
+	/*
+	if (((*_cmd)[_actual_cmd].size() == 2 && (*_cmd)[_actual_cmd][1] == ":leaving") || (*_cmd)[_actual_cmd].size() == 1)
 	{
 		reason = "Quit: ";
 		msg += reason;
 	}
 	else
 	{
+	*/
 		reason = "Quit";
 		for(std::vector<std::string>::iterator it = (*_cmd)[_actual_cmd].begin() + 1 ; it != (*_cmd)[_actual_cmd].end() ; ++it)
 		{
@@ -301,7 +312,7 @@ void	Command::quit()
 			reason += *it;
 		}
 		msg += reason;
-	}
+	//}
 	msg += "\r\n";
 	if (DEBUG)
 		std::cout << "msg = " << msg << std::endl;
@@ -957,9 +968,9 @@ void Command::kill()
 	_socks_to_remove.push_back(socket_killed);
 }
 
-std::vector<int> Command::getSockToRemove()
+std::vector<int>* Command::getSockToRemove()
 {
-	return (_socks_to_remove);
+	return (&_socks_to_remove);
 }
 
 // SEND TO

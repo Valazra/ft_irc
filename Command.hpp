@@ -24,7 +24,7 @@ class Command
 		void readCmd(int client_socket);
 		void execCmd();
 		void splitCommand(std::string msg);
-		std::vector<int> getSockToRemove();
+		std::vector<int> *getSockToRemove();
 
 
 	private:

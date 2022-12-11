@@ -112,7 +112,9 @@ void Server::run()
 			if ((*it).revents == POLLIN)
 			{
 				if (!isSocketStillOpen((*it).fd))
+				{
 					continue ;
+				}
 				_clients[(*it).fd]->receive();
 				if (_clients[(*it).fd]->getStatus() == REMOVE_ME)
 					removeClient((*it).fd);
@@ -120,9 +122,9 @@ void Server::run()
 				{
 					_fatal_error = false;
 					_cmd.readCmd((*it).fd);
-					if (!((_cmd.getSockToRemove()).empty()))
+					if (!((_cmd.getSockToRemove())->empty()))
 					{
-						for (std::vector<int>::iterator it1 = (_cmd.getSockToRemove()).begin(); it1 != (_cmd.getSockToRemove()).end(); ++it)
+						for (std::vector<int>::iterator it1 = (_cmd.getSockToRemove())->begin(); it1 != (_cmd.getSockToRemove())->end(); ++it1)
 						{
 							_sock_to_remove.push_back(*it1);
 							removeClient(*it1);
