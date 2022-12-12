@@ -523,17 +523,20 @@ void	Command::topic()
 			if ((*it2)->getNickname() == _client->getNickname())
 			{
 				std::string topic;
+				std::string tmp;
 				for(std::vector<std::string>::iterator it3 = (*_cmd)[_actual_cmd].begin() + 2 ; it3 != (*_cmd)[_actual_cmd].end() ; ++it3)
 				{
 					if (it3 != (*_cmd)[_actual_cmd].begin() + 2)
-						topic += " ";
-					else
 					{
-						std::string tmp;
-						tmp = (*it3);
-						tmp.erase(0,1);
-						(*it3) = tmp;
+						topic += " ";
+						tmp += " ";
 					}
+					if (it3 == (*_cmd)[_actual_cmd].begin() + 2)
+					{
+						if ((*it3)[0] != ':')
+							tmp.insert(0, ":");
+					}
+					tmp += *it3;
 					topic += *it3;
 				}
 				if (topic == "\"\"") // "" irssi send empty string
@@ -546,7 +549,9 @@ void	Command::topic()
 					finded_chan->setTopic(topic);
 					finded_chan->setHasTopicOn();
 				}
-				std::string msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _client->getServername() + " TOPIC " + _actual_chan->getName() + " :" + _actual_chan->getTopic() + "\r\n";
+				std::string msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _client->getServername() + " TOPIC " + _actual_chan->getName() + " " + tmp + "\r\n";
+				if (DEBUG)
+					std::cout << "Command::Topic MSG:"<< msg << std::endl;
 				for (std::vector<Client *>::iterator it4 = listClients2->begin() ; it4 != listClients2->end() ; ++it4)
 					send((*it4)->getSock(), msg.c_str(), msg.size(), 0);
 				return ;

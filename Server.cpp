@@ -31,8 +31,6 @@ _port(port), _pass(password), _fatal_error(false) ,_cmd(&_clients, password, &_f
 	 * descriptor fd.  The operation is determined by cmd. 
 	 * F_SETFL  Set the file status flags to the value specified by arg
 	 * Lots of functions block. accept() blocks. All the recv() functions block. The reason they can do this is because they're allowed to. When you first create the socket descriptor with socket(), the kernel sets it to blocking. If you don't want a socket to be blocking, you have to make a call to fcntl():
-	 * LIEN DU DESSOUS QUI DIT PLUTOT UTILISER SELECT QUE UTILISER NONBLOCK A VOIR SI SA FIT AVEC LE SUJET ON LAISSE COMME CA EN ATT
-	 *https://www.gta.ufrj.br/ensino/eel878/sockets/advanced.html#blocking 
 	*/
 	if (fcntl(listened_sock, F_SETFL, O_NONBLOCK) < 0)
 	{
