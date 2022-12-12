@@ -1,7 +1,7 @@
 #include "Command.hpp"
 
 Command::Command(std::map<int, Client *> *client_map, std::string password, bool *fatal_error):
-	_clients_ptr(client_map), _password(password), _correctPass(false), _server_name(), _oper_name("coco"), _oper_pass("toto"), _bad_chan_name(), _bad_chan_bool(false), _bad_nickname(), _fatal_error(fatal_error), _creationTime(getTime()) 
+	_clients_ptr(client_map), _password(password), _correctPass(false), _oper_name("coco"), _oper_pass("toto"), _bad_chan_name(), _bad_chan_bool(false), _bad_nickname(), _fatal_error(fatal_error), _creationTime(getTime()) 
 {
 	_cmd_list.push_back("MODE");
 	_cmd_list.push_back("OPER");
@@ -167,7 +167,7 @@ void	Command::nick()
 	else
 	{
 		std::string msg;
-		msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " NICK " + (*_cmd)[_actual_cmd][1] + "\r\n";
+		msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _client->getServername() + " NICK " + (*_cmd)[_actual_cmd][1] + "\r\n";
 		std::vector<int> has_been_send;
 		bool go_send;
 		for(std::vector<Channel *>::iterator it = (_client->getClientChannels())->begin(); it != (_client->getClientChannels())->end() ; ++it)
@@ -225,9 +225,8 @@ void	Command::user()
 	{ 
 		_client->setUsername((*_cmd)[_actual_cmd][1]);
 		_client->setRealname((*_cmd)[_actual_cmd][4]);
-	//	_client->setServername();
+		_client->setServername((*_cmd)[_actual_cmd][3]);
 	//	changer partout ou il y a server_name
-		_server_name = (*_cmd)[_actual_cmd][3];
 	}
 	_client->setStatus(REGISTER);
 	//gerer avec NICK deja existant
@@ -291,7 +290,7 @@ void	Command::quit()
 	}
 	std::string msg;
 	std::string reason;
-	msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " QUIT :";
+	msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _client->getServername() + " QUIT :";
 	/*
 	if (((*_cmd)[_actual_cmd].size() == 2 && (*_cmd)[_actual_cmd][1] == ":leaving") || (*_cmd)[_actual_cmd].size() == 1)
 	{
@@ -378,7 +377,7 @@ void	Command::join()
 void	Command::msgJoin(std::string chan_name, Channel *finded_chan)
 {
 	std::string msg;
-	msg =":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " " + " JOIN " + chan_name + "\r\n";
+	msg =":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _client->getServername() + " " + " JOIN " + chan_name + "\r\n";
 	std::vector<Client *> *listClientsChan = finded_chan->getListClients();
 	for (std::vector<Client *>::iterator it = listClientsChan->begin() ; it != listClientsChan->end() ; ++it)
 		send((*it)->getSock(), msg.c_str(), msg.size(), 0);
@@ -445,7 +444,7 @@ void	Command::partSingle(std::string current_chan)
 		{
 			_client->leaveChannel(finded_chan);
 			finded_chan->deleteClient(*it);
-			std::string msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " PART " + finded_chan->getName();
+			std::string msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _client->getServername() + " PART " + finded_chan->getName();
 			if ((*_cmd)[_actual_cmd].size() > 2)
 				for(std::vector<std::string>::iterator it4 = (*_cmd)[_actual_cmd].begin() + 2 ; it4 != (*_cmd)[_actual_cmd].end() ; ++it4)
 					msg += " " + *it4;
@@ -545,7 +544,7 @@ void	Command::topic()
 					finded_chan->setTopic(topic);
 					finded_chan->setHasTopicOn();
 				}
-				std::string msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " TOPIC " + _actual_chan->getName() + " :" + _actual_chan->getTopic() + "\r\n";
+				std::string msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _client->getServername() + " TOPIC " + _actual_chan->getName() + " :" + _actual_chan->getTopic() + "\r\n";
 				for (std::vector<Client *>::iterator it4 = listClients2->begin() ; it4 != listClients2->end() ; ++it4)
 					send((*it4)->getSock(), msg.c_str(), msg.size(), 0);
 				return ;
@@ -601,7 +600,7 @@ void	Command::names()
 void Command::nameReply(std::string chan_name, Channel *chan)
 {
 	std::string msg;
-	msg =":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " 353 ";
+	msg =":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _client->getServername() + " 353 ";
 	msg += _client->getUsername() + " = " + chan_name + " :";
 	for (std::vector<Client *>::iterator it = (chan->getListClients())->begin() ; it != (chan->getListClients())->end() ; ++it)
 	{
@@ -658,7 +657,7 @@ void	Command::invite()
 			{
 				if ((*it1).second->getNickname() == target_name) //is target existing?
 				{
-					std::string msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " INVITE " + target_name + " " + _actual_chan->getName() + "\r\n";
+					std::string msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _client->getServername() + " INVITE " + target_name + " " + _actual_chan->getName() + "\r\n";
 					if (DEBUG)
 						std::cout << "MSG = " << msg << std::endl;
 					send((*it1).first, msg.c_str(), msg.size(), 0);	
@@ -710,7 +709,7 @@ void Command::kick()
 					if (finded_chan->getChannelOperator() == _client)
 					{
 						std::string msg;
-						msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " KICK " + _actual_chan->getName() + " " + (*it3)->getNickname();
+						msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _client->getServername() + " KICK " + _actual_chan->getName() + " " + (*it3)->getNickname();
 						if ((*_cmd)[_actual_cmd].size() > 3)
 							for(std::vector<std::string>::iterator it4 = (*_cmd)[_actual_cmd].begin() + 3 ; it4 != (*_cmd)[_actual_cmd].end() ; ++it4)
 								msg += " " + (*it4);
@@ -965,17 +964,17 @@ void Command::kill()
 		reason_of_kill += *it;
 	}
 	std::string msg;
-	msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name;
+	msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _client->getServername();
 	msg += " KILL " + (*_cmd)[_actual_cmd][1] + " :" + reason_of_kill + "\r\n";
 	send(socket_killed, msg.c_str(), msg.size(), 0);
-	msg = ":" + (*_clients_ptr)[socket_killed]->getNickname() + "!" + (*_clients_ptr)[socket_killed]->getUsername() + "@" + _server_name;
+	msg = ":" + (*_clients_ptr)[socket_killed]->getNickname() + "!" + (*_clients_ptr)[socket_killed]->getUsername() + "@" + _client->getServername();
 	msg += " QUIT :";
 	msg += "Killed (" + _client->getNickname() + "(" + reason_of_kill + "))\r\n";
 	for (std::vector<Channel *>::iterator it = (client_killed->getClientChannels())->begin() ; it != (client_killed->getClientChannels())->end() ; ++it)
 		for(std::vector<Client *>::iterator it2 = ((*it)->getListClients())->begin() ; it2 != ((*it)->getListClients())->end() ; ++it2)
 				send((*it2)->getSock(), msg.c_str(), msg.size(), 0);
-	msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name;
-	msg += " ERROR :Closing Link: " + _server_name;
+	msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _client->getServername();
+	msg += " ERROR :Closing Link: " + _client->getServername();
 	msg += "(Killed (" + _client->getNickname() + "(" + reason_of_kill + ")))\r\n";
 	send(socket_killed, msg.c_str(), msg.size(), 0);
 	for (std::vector<Channel *>::iterator it = (client_killed->getClientChannels())->begin() ; it != (client_killed->getClientChannels())->end() ; ++it)
@@ -999,9 +998,9 @@ void Command::sendToClient(int numeric_replies)
 	std::string msg;
 
 	if (numeric_replies >= 1 && numeric_replies <= 5)
-		msg = ":" + _server_name + " " + insert_zeros(numeric_replies) + to_string(numeric_replies) + " " + _client->getNickname() + " :";
+		msg = ":" + _client->getServername() + " " + insert_zeros(numeric_replies) + to_string(numeric_replies) + " " + _client->getNickname() + " :";
 	else
-		msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " " + insert_zeros(numeric_replies) + to_string(numeric_replies) + " ";
+		msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _client->getServername() + " " + insert_zeros(numeric_replies) + to_string(numeric_replies) + " ";
 	switch (numeric_replies)
 	{
 		case 1: //RPL_WELCOME
@@ -1011,7 +1010,7 @@ void Command::sendToClient(int numeric_replies)
 			}
 		case 2:
 			{
-				msg += "Your host is " + _server_name + ", running on version [ft_irc]\r\n";
+				msg += "Your host is " + _client->getServername() + ", running on version [ft_irc]\r\n";
 				break;
 			}
 		case 3:
@@ -1021,7 +1020,7 @@ void Command::sendToClient(int numeric_replies)
 			}
 		case 4:
 			{
-				msg += _server_name + " version [ft_irc]. Available user MODE : +o . Avalaible channel MODE : none. \r\n";
+				msg += _client->getServername() + " version [ft_irc]. Available user MODE : +o . Avalaible channel MODE : none. \r\n";
 				break;
 			}
 		case 5:
@@ -1079,7 +1078,7 @@ void Command::sendToClient(int numeric_replies)
 			}
 		case 402: //ERR_NOSERVER
 			{
-				msg += _client->getUsername() + " " + _server_name + " :No such server\r\n";
+				msg += _client->getUsername() + " " + _client->getServername() + " :No such server\r\n";
 				break;
 			}
 		case 403: //ERR_NOSUCHCHANNEL
@@ -1236,9 +1235,9 @@ void Command::sendToTarget(std::string target_name, int target_socket, bool is_n
 		std::cout << "target name puis target socket " << target_name << " "<< target_socket << std::endl;
 	std::string msg;
 	if (is_notice)
-		msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " NOTICE " + target_name + " " ;
+		msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _client->getServername() + " NOTICE " + target_name + " " ;
 	else
-		msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _server_name + " PRIVMSG " + target_name + " " ;
+		msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _client->getServername() + " PRIVMSG " + target_name + " " ;
 	for(std::vector<std::string>::iterator it2 = (*_cmd)[_actual_cmd].begin() + 2 ; it2 != (*_cmd)[_actual_cmd].end() ; ++it2)
 	{
 		if (it2 != (*_cmd)[_actual_cmd].begin() + 2)

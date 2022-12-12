@@ -51,6 +51,8 @@ class Client
 		void leaveChannel(Channel *channel);
 		std::vector<Channel *>* getClientChannels();
 		void leaveAllChannels();
+		void setServername(std::string name);
+		std::string getServername();
 
 	private:
 		Client();
@@ -65,6 +67,7 @@ class Client
 		std::string	_nickname;
 		std::string	_username;
 		std::string	_realname;
+		std::string	_server_name;
 		std::string	_msg;
 		std::vector<std::vector<std::string> > _cmd;
 		bool		_oper;

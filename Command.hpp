@@ -86,7 +86,6 @@ class Command
 		//Conf
 		std::string _password;
 		bool _correctPass;
-		std::string _server_name;
 		std::string	_oper_name;
 		std::string	_oper_pass;
 		//Channels
