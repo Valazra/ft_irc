@@ -11,18 +11,19 @@ int main(int ac, char **av)
 
 	if (ac != 3)
 	{
-		std::cout << "Error, bad number of args" << std::endl;
+		std::cout << "Error, bad number of args." << std::endl;
+		return (-1);
 	}
 	else
 	{
 		port = av[1];
 		password = av[2];
 	}
-	Server irc(port, password);
 	signal(SIGINT, handle);
+	Server irc(port, password);
 	while (!quit)
 		irc.run();
-	if (!errno)
+	if (errno)
 		return (errno);
 	return (0);
 }
