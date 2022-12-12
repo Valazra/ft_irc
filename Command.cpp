@@ -673,7 +673,6 @@ void	Command::invite()
 }
 
 // KICK
-//gérer le cas où on se kick soi meme et gérer le cas ou on kick plusieurs targets en meme temps
 void Command::kick()
 {
 	if (DEBUG)
@@ -832,7 +831,7 @@ void	Command::privmsg()
 	}
 	else if ((*_cmd)[_actual_cmd].size() == 2)
 	{
-		sendToClient(412);
+		sendToClient(412); //ERR_NOTEXTTOSEND
 		return ;
 	}
 	std::string target_name = (*_cmd)[_actual_cmd][1];
@@ -843,12 +842,19 @@ void	Command::privmsg()
 		{
 			if ((*it)->getName() == target_name)
 			{
-				_actual_chan = (*it);
-				sendToChannel((*it), false);
-				return ;
+				for(std::vector<Client *>::iterator it1 = (*it)->getListClients()->begin() ; it1 != (*it)->getListClients()->end() ; ++it1)
+				{
+					if ((*it1)->getNickname() == _client->getNickname())
+					{
+						_actual_chan = (*it);
+						sendToChannel((*it), false);
+						return ;
+					}
+				}
 			}
 		}
 		sendToClient(404); //ERR_CANNOTSENDTOCHAN
+		return ;
 	}
 	else //CLient part
 	{
