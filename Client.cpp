@@ -90,11 +90,6 @@ void Client::splitCommand()
 		else
 			i++;
 	}
-	for (std::vector<std::vector<std::string> >::iterator it = _cmd.begin(); it != _cmd.end(); ++it)
-	{
-		for (std::vector<std::string>::iterator it2 = it->begin(); it2 != it->end(); ++it2)
-			std::cout << "|" << *it2 << "|" << std::endl;
-	}
 }
 
 Client::~Client()
