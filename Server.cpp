@@ -211,3 +211,8 @@ void	Server::removeClient(int const sock_to_remove)
 	delete (_clients)[sock_to_remove];
 	_clients.erase(sock_to_remove);
 }
+
+std::vector<pollfd>* Server::getFds()
+{
+	return (&_fds);
+}

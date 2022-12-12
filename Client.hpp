@@ -31,6 +31,11 @@ class Client
 		void setStatus(userStatus status);
 		void receive();
 		std::vector<std::vector<std::string> > * getCmd();
+
+		void setAlreadyUserCmd(bool already);
+		bool getAlreadyUserCmd();
+		void setAlreadyNickCmd(bool already);
+		bool getAlreadyNickCmd();
 		
 		void splitCommand();
 		int getSock();
@@ -59,6 +64,9 @@ class Client
 		Client(Client const &src);
 		Client &operator=(Client const & src);
 
+
+		bool _already_user_cmd;
+		bool _already_nick_cmd;
 		std::string _options;
 		int		_sock;
 		bool		_msg_finish;

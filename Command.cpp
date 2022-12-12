@@ -192,6 +192,14 @@ void	Command::nick()
 		}
 		send(_client->getSock(), msg.c_str(), msg.size(), 0);
 		_client->setNickname((*_cmd)[_actual_cmd][1]);
+		_client->setAlreadyNickCmd(true);
+		if (_client->getAlreadyUserCmd())
+		{
+			sendToClient(1);
+			sendToClient(2);
+			sendToClient(3);
+			sendToClient(4);
+		}
 	}
 }
 
@@ -206,8 +214,7 @@ void	Command::user()
 		fatalError("You should connect with a password before NICK and USER.");
 		return ;
 	}
-	//si le status est pas sur TO_REGISTER alors on va dans le if
-	if (_client->getStatus() != 0)
+	if (_client->getStatus() != TO_REGISTER)
 	{
 		sendToClient(462); //ERR_ALREADYREGISTERED
 		return ;
@@ -219,21 +226,23 @@ void	Command::user()
 	}
 	else if (!parsingRealname((*_cmd)[_actual_cmd][4]))
 	{
-		return ; //pas de ":" devant le real name 
+		return ; // We need ":" in front of realname. 
 	}
 	else
 	{ 
 		_client->setUsername((*_cmd)[_actual_cmd][1]);
 		_client->setRealname((*_cmd)[_actual_cmd][4]);
 		_client->setServername((*_cmd)[_actual_cmd][3]);
-	//	changer partout ou il y a server_name
 	}
 	_client->setStatus(REGISTER);
-	//gerer avec NICK deja existant
-	sendToClient(1);
-	sendToClient(2);
-	sendToClient(3);
-	sendToClient(4);
+	_client->setAlreadyUserCmd(true);
+	if (_client->getAlreadyNickCmd())
+	{
+		sendToClient(1);
+		sendToClient(2);
+		sendToClient(3);
+		sendToClient(4);
+	}
 }
 
 /*
@@ -300,21 +309,27 @@ void	Command::quit()
 	else
 	{
 	*/
+	if ((*_cmd)[_actual_cmd].size() == 1)
+		reason = "Quit:";
+	else
 		reason = "Quit";
-		for(std::vector<std::string>::iterator it = (*_cmd)[_actual_cmd].begin() + 1 ; it != (*_cmd)[_actual_cmd].end() ; ++it)
+	for(std::vector<std::string>::iterator it = (*_cmd)[_actual_cmd].begin() + 1 ; it != (*_cmd)[_actual_cmd].end() ; ++it)
+	{
+		if (it != (*_cmd)[_actual_cmd].begin() + 1)
+			reason += " ";
+		if (it == (*_cmd)[_actual_cmd].begin() + 1)
 		{
-			if (it != (*_cmd)[_actual_cmd].begin() + 1)
-				reason += " ";
+			if ((*it)[0] == ':')
+				(*it).insert(1, " ");
 			else
 			{
-				std::string tmp;
-				tmp = (*it);
-				tmp.insert(1, " ");
-				(*it) = tmp;
+				(*it).insert(0, ":");
+				(*it).insert(1, " ");
 			}
-			reason += *it;
 		}
-		msg += reason;
+		reason += *it;
+	}
+	msg += reason;
 	//}
 	msg += "\r\n";
 	if (DEBUG)

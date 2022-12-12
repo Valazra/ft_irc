@@ -32,6 +32,7 @@ class Server
 		void check_new_client();
 		void removeClient(int const sock_to_remove);
 		void registerClient(int const &client_sock);
+		std::vector<pollfd>*  getFds();
 
 	private:
 		Server();

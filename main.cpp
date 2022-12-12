@@ -20,9 +20,12 @@ int main(int ac, char **av)
 		password = av[2];
 	}
 	signal(SIGINT, handle);
+	signal(SIGQUIT, handle);
 	Server irc(port, password);
 	while (!quit)
 		irc.run();
+	if (!((irc.getFds())->empty()))
+		close(((irc.getFds())->front()).fd);
 	if (errno)
 		return (errno);
 	return (0);

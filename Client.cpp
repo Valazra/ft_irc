@@ -2,7 +2,7 @@
 #include "Server.hpp"
 
 Client::Client(int sock, struct sockaddr_in address):
-_sock(sock), _msg_finish(0), _status(TO_REGISTER), _hostname(),_nickname(), _username(), _realname(), _server_name(), _oper(false), _client_channels()
+_already_user_cmd(false), _already_nick_cmd(false), _sock(sock), _msg_finish(0), _status(TO_REGISTER), _hostname(),_nickname(), _username(), _realname(), _server_name(), _oper(false), _client_channels()
 {
 	fcntl(sock, F_SETFL, O_NONBLOCK);
 	char hostname[NI_MAXHOST];
@@ -238,3 +238,21 @@ void Client::setServername(std::string name)
 {
 	_server_name = name;
 }
+
+void Client::setAlreadyUserCmd(bool already)
+{
+	_already_user_cmd = already;
+}
+bool Client::getAlreadyUserCmd()
+{
+	return (_already_user_cmd);
+}
+void Client::setAlreadyNickCmd(bool already)
+{
+	_already_nick_cmd = already;
+}
+bool Client::getAlreadyNickCmd()
+{
+	return (_already_nick_cmd);
+}
+

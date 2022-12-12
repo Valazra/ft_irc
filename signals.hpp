@@ -13,6 +13,12 @@ void handle(int sig)
 			std::cout << "SIGINT" << std::endl;
 		quit = true;
 	}
+	if (sig == SIGQUIT)
+	{
+		if (DEBUG)
+			std::cout << "SIGQUIT" << std::endl;
+		quit = true;
+	}
 }
 
 #endif
