@@ -199,6 +199,7 @@ void	Command::nick()
 			sendToClient(2);
 			sendToClient(3);
 			sendToClient(4);
+			sendToClient(5);
 		}
 	}
 }
@@ -242,6 +243,7 @@ void	Command::user()
 		sendToClient(2);
 		sendToClient(3);
 		sendToClient(4);
+		sendToClient(5);
 	}
 }
 
@@ -300,15 +302,6 @@ void	Command::quit()
 	std::string msg;
 	std::string reason;
 	msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _client->getServername() + " QUIT :";
-	/*
-	if (((*_cmd)[_actual_cmd].size() == 2 && (*_cmd)[_actual_cmd][1] == ":leaving") || (*_cmd)[_actual_cmd].size() == 1)
-	{
-		reason = "Quit: ";
-		msg += reason;
-	}
-	else
-	{
-	*/
 	if ((*_cmd)[_actual_cmd].size() == 1)
 		reason = "Quit:";
 	else
@@ -329,15 +322,11 @@ void	Command::quit()
 		}
 		reason += *it;
 	}
-	msg += reason;
-	//}
-	msg += "\r\n";
+	msg += reason + "\r\n";
 	if (DEBUG)
 		std::cout << "msg = " << msg << std::endl;
-	//on parcoure tous les chans du client
 	for (std::vector<Channel *>::iterator it = (_client->getClientChannels())->begin() ; it != (_client->getClientChannels())->end() ; ++it)
 	{
-		//on parcoure tous les clients du chan
 		for(std::vector<Client *>::iterator it2 = ((*it)->getListClients())->begin() ; it2 != ((*it)->getListClients())->end() ; ++it2)
 		{
 			if ((*it2) != _client)
@@ -349,8 +338,6 @@ void	Command::quit()
 		(*it)->deleteClient(_client);
 	}
 	_client->leaveAllChannels();
-	//chan->deleteClient(client);
-	//client->leaveChannel(chan);
 	checkIfEmptyChan();
 	fatalError(msg);
 }
@@ -386,7 +373,6 @@ void	Command::join()
 	std::vector<std::string> split_chan = splitCommas((*_cmd)[_actual_cmd][1]);
 	for (std::vector<std::string>::iterator it = split_chan.begin() ; it != split_chan.end() ; ++it)
 		joinSingle(*it);
-
 }
 
 void	Command::msgJoin(std::string chan_name, Channel *finded_chan)
@@ -399,7 +385,6 @@ void	Command::msgJoin(std::string chan_name, Channel *finded_chan)
 	if (finded_chan->getHasTopic() == true)
 		sendToClient(332); //RPL_TOPIC
 	nameReply(chan_name, finded_chan);
-
 }
 
 void	Command::joinSingle(std::string current_chan)
@@ -630,7 +615,7 @@ void Command::nameReply(std::string chan_name, Channel *chan)
 	sendToClient(366); //RPL_ENDOFNAMES
 }
 
-// INVITE
+// INVITE - We ignore last parameters if they are too many cause no numeric reply in RFC 2812 about it
 void	Command::invite()
 {
 	if (DEBUG)
@@ -640,7 +625,7 @@ void	Command::invite()
 		sendToClient(451); //ERR_NOTREGISTERED
 		return ;
 	}
-	if ((*_cmd)[_actual_cmd].size() != 3) //si on en a 6 on envoi need more params, c est fifou?
+	if ((*_cmd)[_actual_cmd].size() < 3)
 	{
 		sendToClient(461); //ERR_NEEDMOREPARAMS
 		return ;
@@ -772,7 +757,7 @@ void	Command::mode()
 	if ((*_cmd)[_actual_cmd][1][0] == '#')
 	{
 		//Channel part
-		for(std::vector<Channel *>::iterator it = (_all_channels).begin() ; it != (_all_channels).end() ; ++it)
+		for(std::vector<Channel *>::iterator it = (_all_channels).begin(); it != (_all_channels).end() ; ++it)
 		{
 			if ((*it)->getName() == target_name)
 			{
@@ -788,7 +773,6 @@ void	Command::mode()
 		}
 		_bad_chan_name = target_name; 
 		sendToClient(403); //ERR_NOSUCHCHANNEL
-
 	}
 	else
 	{
@@ -897,26 +881,38 @@ void	Command::notice()
 	if (DEBUG)
 		std::cout << "Command::notice" << std::endl;
 	if (_client->getStatus() == TO_REGISTER)
-	{
-		sendToClient(451); //ERR_NOTREGISTERED
 		return ;
-	}
-	if ((*_cmd)[_actual_cmd].size() < 3)
+	if ((*_cmd)[_actual_cmd].size() == 1)
+		return ;
+	else if ((*_cmd)[_actual_cmd].size() == 2)
 		return ;
 	std::string target_name = (*_cmd)[_actual_cmd][1];
-	if (target_name[0] == '#') //Channel part
+	//Channel part
+	if (target_name[0] == '#')
 	{
 		for(std::vector<Channel *>::iterator it = (_all_channels).begin() ; it != (_all_channels).end() ; ++it)
 		{
 			if ((*it)->getName() == target_name)
 			{
-				sendToChannel((*it), true);
-				return ;
+				for(std::vector<Client *>::iterator it1 = (*it)->getListClients()->begin() ; it1 != (*it)->getListClients()->end() ; ++it1)
+				{
+					if ((*it1)->getNickname() == _client->getNickname())
+					{
+						_actual_chan = (*it);
+						sendToChannel((*it), true);
+						return ;
+					}
+				}
 			}
 		}
+		return ;
 	}
-	else //Client part
+	else //CLient part
 	{
+		if (!checkNickname(target_name))
+		{
+			return ;
+		}
 		for (std::map<int, Client *>::iterator it = (*_clients_ptr).begin() ; it != (*_clients_ptr).end() ; ++it)
 		{
 			if ((*it).second->getNickname() == target_name) 
@@ -1023,22 +1019,22 @@ void Command::sendToClient(int numeric_replies)
 				msg += "Welcome to the Internet Relay Network " + _client->getNickname() + "\r\n";
 				break;
 			}
-		case 2:
+		case 2: //RPL_YOURHOST
 			{
 				msg += "Your host is " + _client->getServername() + ", running on version [ft_irc]\r\n";
 				break;
 			}
-		case 3:
+		case 3: //RPL_CREATED
 			{
 				msg += "This server was created at: " + _creationTime + " \r\n";
 				break;
 			}
-		case 4:
+		case 4: //RPL_MYINFO
 			{
 				msg += _client->getServername() + " version [ft_irc]. Available user MODE : +o . Avalaible channel MODE : none. \r\n";
 				break;
 			}
-		case 5:
+		case 5: //RPL_ISUPPORT
 			{
 				msg += "TARGMAX=1 CHANTYPES=# CHANMODES=,,,, MODES=1 :are supported by this server\r\n";
 				break;
@@ -1073,7 +1069,7 @@ void Command::sendToClient(int numeric_replies)
 				msg += _client->getUsername() + " " + (*_cmd)[_actual_cmd][1] + " " + _actual_chan->getName() + "\r\n";
 				break;
 			}
-		case 366:
+		case 366: //RPL_ENDOFNAMES
 			{
 				if (_bad_chan_bool)
 					msg += _client->getUsername() + " " + _bad_chan_name + " :End of /NAMES list\r\n";	
@@ -1247,7 +1243,7 @@ void Command::sendToClient(int numeric_replies)
 void Command::sendToTarget(std::string target_name, int target_socket, bool is_notice)
 {
 	if (DEBUG)
-		std::cout << "target name puis target socket " << target_name << " "<< target_socket << std::endl;
+		std::cout << "Command::sendToTarget | Target name and target socket: " << target_name << " "<< target_socket << std::endl;
 	std::string msg;
 	if (is_notice)
 		msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _client->getServername() + " NOTICE " + target_name + " " ;
