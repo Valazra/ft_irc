@@ -2,7 +2,7 @@
 #include "signals.hpp"
 #include "main.h"
 
-bool signal_bool;
+bool quit = false;
 
 int main(int ac, char **av)
 {
@@ -20,15 +20,9 @@ int main(int ac, char **av)
 	}
 	Server irc(port, password);
 	signal(SIGINT, handle);
-	while (1)
-	{
-		signal_bool = false;
+	while (!quit)
 		irc.run();
-		if (signal_bool == true)
-		{
-			std::cout << "SIGNAL BOOL TRUE DANS MAIN" << std::endl;
-			return (0);
-		}
-	}
+	if (!errno)
+		return (errno);
 	return (0);
 }

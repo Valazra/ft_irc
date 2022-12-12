@@ -149,7 +149,12 @@ void	Command::nick()
 		fatalError("You should connect with a password before NICK and USER.");
 		return ;
 	}
-	if (!parsingNickname((*_cmd)[_actual_cmd][1]) || (*_cmd)[_actual_cmd].size() > 2)
+	if ((*_cmd)[_actual_cmd].size() == 1)
+	{
+		sendToClient(431); //ERR_NONICKNAMEGIVEN
+		return ;
+	}
+	else if (!parsingNickname((*_cmd)[_actual_cmd][1]) || (*_cmd)[_actual_cmd].size() > 2)
 	{
 		sendToClient(432); //ERR_ERRONEUSNICKNAME
 		return ;
@@ -157,11 +162,6 @@ void	Command::nick()
 	else if (checkNickname((*_cmd)[_actual_cmd][1]))
 	{
 		sendToClient(433); //ERR_NICKNAMEINUSE
-		return ;
-	}
-	else if ((*_cmd)[_actual_cmd].size() == 1)
-	{
-		sendToClient(431); //ERR_NONICKNAMEGIVEN
 		return ;
 	}
 	else
@@ -225,6 +225,8 @@ void	Command::user()
 	{ 
 		_client->setUsername((*_cmd)[_actual_cmd][1]);
 		_client->setRealname((*_cmd)[_actual_cmd][4]);
+	//	_client->setServername();
+	//	changer partout ou il y a server_name
 		_server_name = (*_cmd)[_actual_cmd][3];
 	}
 	_client->setStatus(REGISTER);

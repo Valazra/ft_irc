@@ -8,7 +8,10 @@ _port(port), _pass(password), _fatal_error(false) ,_cmd(&_clients, password, &_f
 	// domain: PF_INET Protocoles Internet IPv4 ou PF_INET6 Protocoles Internet IPv6
 	// type: SOCK_STREAM Provides sequenced, reliable, two-way, connection-based byte streams. An out-of-band data transmission mechanism may be supported.
 	if ((listened_sock = socket(PF_INET, SOCK_STREAM, getprotobyname("tcp")->p_proto)) == 0)
-		throw Server::ErrnoEx();
+	{
+		quit = true;
+		return ;
+	}
 	// int setsockopt(int sockfd, int level, int optname, const void *optval, socklen_t optlen);
 	// manipulate options for the socket referred to by the file descriptor sockfd
 	// SOL_SOCKET is the socket layer itself. It is used for options that are protocol independent.
@@ -18,7 +21,10 @@ _port(port), _pass(password), _fatal_error(false) ,_cmd(&_clients, password, &_f
 	 */
 	int enable = 1; // CHECK ENABLE
 	if (setsockopt(listened_sock, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &enable, sizeof(enable)))
-		throw Server::ErrnoEx();
+	{
+		quit = true;
+		return ;
+	}
 	/*
 	 * int fcntl(int fd, int cmd, ... * arg *);
 	 * fcntl() performs one of the operations described below on the open file
@@ -29,7 +35,10 @@ _port(port), _pass(password), _fatal_error(false) ,_cmd(&_clients, password, &_f
 	 *https://www.gta.ufrj.br/ensino/eel878/sockets/advanced.html#blocking 
 	*/
 	if (fcntl(listened_sock, F_SETFL, O_NONBLOCK) < 0)
-		throw Server::ErrnoEx();
+	{
+		quit = true;
+		return ;
+	}
 	// (IPv4 only--see struct sockaddr_in6 for IPv6)
 	/*
 	   To deal with struct sockaddr, programmers created a parallel structure: struct sockaddr_in (“in” for “Internet”) to be used with IPv4.
@@ -62,10 +71,16 @@ _port(port), _pass(password), _fatal_error(false) ,_cmd(&_clients, password, &_f
 	   socket”.
 	*/
 	if (bind(listened_sock, (struct sockaddr *)&addr, sizeof(addr)) < 0)
-		throw Server::ErrnoEx();
+	{
+		quit = true;
+		return ;
+	}
 	//10 est le nombre max de clients à faire la queue VERIF QUE C BIEN MAX CLIENT
 	if (listen(listened_sock, MAX_CLIENTS) < 0)
-		throw Server::ErrnoEx();
+	{
+		quit = true;
+		return ;
+	}
 	_fds.push_back(pollfd());
 	_fds.back().fd = listened_sock;
 	_fds.back().events = POLLIN;
@@ -76,7 +91,8 @@ _port(port), _pass(password), _fatal_error(false) ,_cmd(&_clients, password, &_f
 
 Server::~Server()
 {
-	std::cout << "SERVER DESTRUCTOOOOOOOOOOOR" << std::endl;
+	if (DEBUG)
+	std::cout << "Server::Destructor" << std::endl;
 	std::vector<Client *> tmp;
 	for(std::map<int, Client *>::iterator it = _clients.begin() ; it != _clients.end() ; ++it)
 		tmp.push_back((*it).second);
@@ -101,8 +117,14 @@ void Server::run()
 	 //nfds is the count of elements in the array, and timeout is a timeout in milliseconds.
 	 //It returns the number of elements in the array that have had an event occur.
 	 //TO DO: try to treat if poll encounter error??
-	if (poll(&_fds[0], _fds.size(), (PING * 1000) / 10) == -1)
+
+	if (poll(&_fds[0], _fds.size(), -1) == -1)
+	{
+		if (DEBUG)
+			std::cout << "Server::run poll()" << std::endl;
+		quit = true;
 		return;
+	}
 	if (_fds[0].revents == POLLIN)
 		check_new_client();
 	else
@@ -117,7 +139,10 @@ void Server::run()
 				}
 				_clients[(*it).fd]->receive();
 				if (_clients[(*it).fd]->getStatus() == REMOVE_ME)
+				{
 					removeClient((*it).fd);
+					_sock_to_remove.push_back((*it).fd);
+				}
 				else if (_clients[(*it).fd]->getMsgFinish()) //le _msg_finish change dans client.receive()
 				{
 					_fatal_error = false;
@@ -157,13 +182,21 @@ void Server::check_new_client()
 	//donc en gros on dit qu'on prendra plus de nouveaux clients a notre
 	//listened socket
 	if (_clients.size() == MAX_CLIENTS) 
+	{
 		if (shutdown(_fds[0].fd, SHUT_RD) == -1)
-			throw Server::ErrnoEx();
+		{
+			quit = true;
+			return ;	
+		}
+	}
 	struct sockaddr_in addr;
 	socklen_t sock_len = sizeof(addr);
 	int new_client_sock = accept(_fds[0].fd, (struct sockaddr *)&addr, &sock_len);
 	if (new_client_sock == -1)
-		throw Server::ErrnoEx();
+	{
+		quit = true;
+		return ;	
+	}
 	if (DEBUG)
 		std::cout << new_client_sock << std::endl;
 	_clients[new_client_sock] = new Client(new_client_sock, addr);

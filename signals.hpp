@@ -9,8 +9,9 @@ void handle(int sig)
 {
 	if (sig == SIGINT)
 	{
-		std::cout << "ON EST DANS SIGNAL ----> SIGINT" << std::endl;
-		signal_bool = true;
+		if (DEBUG)
+			std::cout << "SIGINT" << std::endl;
+		quit = true;
 	}
 }
 

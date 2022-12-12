@@ -11,7 +11,10 @@ _sock(sock), _msg_finish(0), _status(TO_REGISTER), _hostname(),_nickname(), _use
 	//NI_MAXHOST = 1025 et NI_MAXSERV = 32 (taille des buffers), c'est <netdb.h> qui definit ces constantes
 	//NI_NUMERICSERV ---> si cet attribut est défini, l'adresse du service est renvoyée sous forme numérique
 	if (getnameinfo((struct sockaddr *)&address, sizeof(address), hostname, NI_MAXHOST, NULL, 0, NI_NUMERICSERV) != 0)
-		throw Client::ErrnoEx(); //surement mettre une autre exception
+	{
+		quit = true;
+		return ;
+	}
 	else
 		this->_hostname = hostname;
 }
@@ -30,6 +33,7 @@ void Client::receive()
 	if ((size = recv(_sock, &buffer, MAX_CHAR, 0)) == -1)
 	{
 		_msg.clear();
+		quit = true;
 		return;
 	}
 	// If recv return 0 that means the pair stop the connection normally
@@ -42,7 +46,7 @@ void Client::receive()
 	buffer[size] = 0;
 	_msg += buffer;
 	//check if msg is end with \r\n
-	if (_msg.size() > 2 && *(_msg.end() - 2) ==  '\r' && *(_msg.end() - 1) == '\n')
+	if (_msg.size() >= 2 && *(_msg.end() - 2) ==  '\r' && *(_msg.end() - 1) == '\n')
 	{
 		_msg_finish = 1;
 		splitCommand();

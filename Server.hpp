@@ -24,15 +24,6 @@
 
 class Server
 {
-	class ErrnoEx:
-	public std::exception
-	{
-		virtual const char* what() const throw()
-		{
-			return (strerror(errno));
-		}
-	};
-
 	public:
 		Server(std::string port, std::string password);
 		virtual ~Server();

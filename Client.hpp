@@ -24,15 +24,6 @@ class Command;
 
 class Client
 {
-	class ErrnoEx:
-	public std::exception
-	{
-		virtual const char* what() const throw()
-		{
-			return (strerror(errno));
-		}
-	};
-
 	public:
 		Client(int sock, struct sockaddr_in address);
 		~Client();
