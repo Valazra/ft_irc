@@ -389,6 +389,8 @@ void	Command::msgJoin(std::string chan_name, Channel *finded_chan)
 
 void	Command::joinSingle(std::string current_chan)
 {
+	if (current_chan[0] != '#') //our reference client always put a # for standar chan but we add this for 
+		return ;
 	Channel *finded_chan = findChan(current_chan);
 	if (!finded_chan) //No chan We create it
 	{
@@ -1130,11 +1132,6 @@ void Command::sendToClient(int numeric_replies)
 		case 433: //ERR_NICKNAMEINUSE
 			{
 				msg += _client->getUsername() + " " +  _client->getNickname() + " :Nickname is already in use\r\n";	
-				break;
-			}
-		case 436: //ERR_NICKCOLLISION
-			{
-				msg += _client->getNickname() + " :Nickname collision KILL from " + _client->getUsername() + "@" + _client->getHostname() + "\r\n";	
 				break;
 			}
 		case 441: //ERR_USERNOTINCHANNEL
