@@ -49,7 +49,7 @@ Command::~Command()
 	for(std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
 		tmp.push_back(*it);
 	for (std::vector<Channel *>::iterator it = tmp.begin() ; it != tmp.end() ; ++it)
-			delete (*it);
+		delete (*it);
 }
 
 // COMMANDS MAIN FUNCTIONS
@@ -259,7 +259,7 @@ void	Command::user()
  * This mode is standard, and the mode letter used for it is "+O".
  * If a user has this mode, this indicates that they are a server operator.
  * A local operator has operator privileges for their server, and not for the rest of the network.
-*/
+ */
 // OPER
 //we decided to ignore when there are too much params, because Irc RFC doesn't specify this comportment
 void	Command::oper()
@@ -724,6 +724,7 @@ void	Command::invite()
 					return ;
 				}
 			}
+			_bad_nickname = (*_cmd)[_actual_cmd][1];
 			sendToClient(401); //ERR_NOSUCHNICK
 			return ;
 		}
@@ -790,7 +791,6 @@ void Command::kick()
 			}
 			_bad_nickname = (*_cmd)[_actual_cmd][2];
 			sendToClient(441); //ERR_USERNOTINCHANNEL
-			_bad_nickname.clear();
 			return ;
 		}
 	}
@@ -841,6 +841,7 @@ void	Command::mode()
 		//User part
 		if (!checkNickname((*_cmd)[_actual_cmd][1]))
 		{
+			_bad_nickname = (*_cmd)[_actual_cmd][1];
 			sendToClient(401); //ERR_NOSUCHNICK 
 			return ;
 		}
@@ -896,13 +897,19 @@ void	Command::privmsg()
 		sendToClient(412); //ERR_NOTEXTTOSEND
 		return ;
 	}
-	std::string target_name = (*_cmd)[_actual_cmd][1];
+	std::vector<std::string> split_targets = splitCommas((*_cmd)[_actual_cmd][1]);
+	for (std::vector<std::string>::iterator it = split_targets.begin() ; it != split_targets.end() ; ++it)
+		sendPrivMsg(*it);
+}
+
+void	Command::sendPrivMsg(std::string target)
+{
 	//Channel part
-	if (target_name[0] == '#')
+	if (target[0] == '#')
 	{
 		for(std::vector<Channel *>::iterator it = (_all_channels).begin() ; it != (_all_channels).end() ; ++it)
 		{
-			if ((*it)->getName() == target_name)
+			if ((*it)->getName() == target)
 			{
 				for(std::vector<Client *>::iterator it1 = (*it)->getListClients()->begin() ; it1 != (*it)->getListClients()->end() ; ++it1)
 				{
@@ -915,25 +922,28 @@ void	Command::privmsg()
 				}
 			}
 		}
+		_bad_chan_name = target;
 		sendToClient(404); //ERR_CANNOTSENDTOCHAN
 		return ;
 	}
-	else //CLient part
+	else //Client part
 	{
-		if (!checkNickname(target_name))
+		if (!checkNickname(target))
 		{
+			_bad_nickname = target;
 			sendToClient(401); //ERR_NOSUCHNICK 
 			return ;
 		}
 		for (std::map<int, Client *>::iterator it = (*_clients_ptr).begin() ; it != (*_clients_ptr).end() ; ++it)
 		{
-			if ((*it).second->getNickname() == target_name) 
+			if ((*it).second->getNickname() == target)
 			{
-				sendToTarget(target_name, (*it).first, false);
+				sendToTarget(target, (*it).first, false);
 				return ;
 			}
 		}
 	}
+	_bad_nickname = target;
 	sendToClient(401); //ERR_NOSUCHNICK (401)			
 }
 
@@ -1016,6 +1026,7 @@ void Command::kill()
 	}
 	if (!checkNickname((*_cmd)[_actual_cmd][1]))
 	{
+		_bad_nickname = (*_cmd)[_actual_cmd][1];
 		sendToClient(401); //ERR_NOSUCHNICK 
 		return ;
 	}
@@ -1045,7 +1056,7 @@ void Command::kill()
 	msg += "Killed (" + _client->getNickname() + "(" + reason_of_kill + "))\r\n";
 	for (std::vector<Channel *>::iterator it = (client_killed->getClientChannels())->begin() ; it != (client_killed->getClientChannels())->end() ; ++it)
 		for(std::vector<Client *>::iterator it2 = ((*it)->getListClients())->begin() ; it2 != ((*it)->getListClients())->end() ; ++it2)
-				send((*it2)->getSock(), msg.c_str(), msg.size(), 0);
+			send((*it2)->getSock(), msg.c_str(), msg.size(), 0);
 	msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _client->getServername();
 	msg += " ERROR :Closing Link: " + _client->getServername();
 	msg += "(Killed (" + _client->getNickname() + "(" + reason_of_kill + ")))\r\n";
@@ -1161,7 +1172,7 @@ void Command::sendToClient(int numeric_replies)
 			}
 		case 401: //ERR_NOSUCHNICK
 			{
-				msg += _client->getUsername() + " " + _client->getNickname() + " :No such nick/channel\r\n";
+				msg += _client->getUsername() + " " + _bad_nickname + " :No such nick/channel\r\n";
 				break;
 			}
 		case 402: //ERR_NOSERVER
@@ -1176,7 +1187,7 @@ void Command::sendToClient(int numeric_replies)
 			}
 		case 404: //ERR_CANNOTSENDTOCHAN
 			{
-				msg += _client->getUsername() + " " + _actual_chan->getName() + " :Cannot send to channel\r\n";
+				msg += _client->getUsername() + " " + _bad_chan_name + " :Cannot send to channel\r\n";
 				break;
 			}
 		case 405: //ERR_TOOMANYCHANNELS
@@ -1398,8 +1409,8 @@ void 	Command::checkIfEmptyChan()
 	}
 	for (std::vector<Channel *>::iterator it = tmp.begin() ; it != tmp.end() ; ++it)
 	{
-			(_all_channels).erase(returnItChan((*it)->getName()));
-			delete ((*it));
+		(_all_channels).erase(returnItChan((*it)->getName()));
+		delete ((*it));
 	}
 }
 

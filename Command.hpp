@@ -57,6 +57,7 @@ class Command
 		void partSingle(std::string current_chan);
 		void sendToClient(int numeric_replies);
 		void sendToTarget(std::string target_name, int target_socket, bool is_notice);
+		void sendPrivMsg(std::string target);
 		int parsingNickname(std::string nickname);
 		int parsingRealname(std::string realname);
 		int checkNickname(std::string nickname);
