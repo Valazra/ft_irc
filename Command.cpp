@@ -168,6 +168,8 @@ void	Command::nick()
 	}
 	else
 	{
+		_client->setNickname((*_cmd)[_actual_cmd][1]);
+		_client->setAlreadyNickCmd(true);
 		std::string msg;
 		msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _client->getServername() + " NICK " + (*_cmd)[_actual_cmd][1] + "\r\n";
 		std::vector<int> has_been_send;
@@ -193,8 +195,6 @@ void	Command::nick()
 			}
 		}
 		send(_client->getSock(), msg.c_str(), msg.size(), 0);
-		_client->setNickname((*_cmd)[_actual_cmd][1]);
-		_client->setAlreadyNickCmd(true);
 		if (_client->getAlreadyUserCmd())
 		{
 			if (_client->getStatus() == TO_REGISTER)
@@ -204,6 +204,7 @@ void	Command::nick()
 				sendToClient(3);
 				sendToClient(4);
 				sendToClient(5);
+				_client->setStatus(REGISTER);
 			}
 		}
 	}
@@ -240,7 +241,6 @@ void	Command::user()
 		_client->setRealname((*_cmd)[_actual_cmd][4]);
 		_client->setServername((*_cmd)[_actual_cmd][3]);
 	}
-	_client->setStatus(REGISTER);
 	_client->setAlreadyUserCmd(true);
 	if (_client->getAlreadyNickCmd())
 	{
@@ -249,6 +249,7 @@ void	Command::user()
 		sendToClient(3);
 		sendToClient(4);
 		sendToClient(5);
+		_client->setStatus(REGISTER);
 	}
 }
 
@@ -340,6 +341,9 @@ void	Command::quit()
 	}
 	for (std::vector<Channel *>::iterator it = (_client->getClientChannels())->begin() ; it != (_client->getClientChannels())->end() ; ++it)
 	{
+		if ((*it)->isChanOp())
+			if ((*it)->getChannelOperator() == (*_clients_ptr)[_client_socket])
+				(*it)->setChanOp(false);
 		(*it)->deleteClient(_client);
 	}
 	_client->leaveAllChannels();
@@ -449,6 +453,9 @@ void	Command::partSingle(std::string current_chan)
 	{
 		if ((*it)->getNickname() == _client->getNickname())
 		{
+			if (finded_chan->isChanOp())
+				if ((finded_chan)->getChannelOperator() == (*_clients_ptr)[_client_socket])
+					(finded_chan)->setChanOp(false);
 			_client->leaveChannel(finded_chan);
 			finded_chan->deleteClient(*it);
 			std::string msg = ":" + _client->getNickname() + "!" + _client->getUsername() + "@" + _client->getServername() + " PART " + finded_chan->getName();
@@ -616,8 +623,9 @@ void Command::nameReply(std::string chan_name, Channel *chan)
 	msg += _client->getUsername() + " = " + chan_name + " :";
 	for (std::vector<Client *>::iterator it = (chan->getListClients())->begin() ; it != (chan->getListClients())->end() ; ++it)
 	{
-		if ((*it)->getNickname() == (chan->getChannelOperator()->getNickname()))
-			msg += "@"; 
+		if (chan->isChanOp())
+			if ((*it)->getNickname() == (chan->getChannelOperator()->getNickname()))
+				msg += "@"; 
 		msg += (*it)->getNickname();
 		if ((it + 1) != chan->getListClients()->end()) 
 			msg += " ";
@@ -768,6 +776,9 @@ void Command::kick()
 							std::cout << "MSG KICK = " << msg << std::endl;
 						for (std::vector<Client *>::iterator it5 = listClients->begin() ; it5 != listClients->end() ; ++it5)
 							send((*it5)->getSock(), msg.c_str(), msg.size(), 0);
+						if (finded_chan->isChanOp())
+							if ((finded_chan)->getChannelOperator() == *it3)
+								(finded_chan)->setChanOp(false);
 						clearChan(finded_chan, *it3);
 						checkIfEmptyChan();
 						return ;
@@ -1039,7 +1050,12 @@ void Command::kill()
 	msg += "(Killed (" + _client->getNickname() + "(" + reason_of_kill + ")))\r\n";
 	send(socket_killed, msg.c_str(), msg.size(), 0);
 	for (std::vector<Channel *>::iterator it = (client_killed->getClientChannels())->begin() ; it != (client_killed->getClientChannels())->end() ; ++it)
+	{
+		if ((*it)->isChanOp())
+			if ((*it)->getChannelOperator() == ((*_clients_ptr)[client_killed->getSock()]))
+				(*it)->setChanOp(false);
 		(*it)->deleteClient(client_killed);
+	}
 	client_killed->leaveAllChannels();
 	checkIfEmptyChan();
 	if (socket_killed == _client_socket)

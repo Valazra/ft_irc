@@ -25,6 +25,7 @@ class Command
 		void execCmd();
 		void splitCommand(std::string msg);
 		std::vector<int> *getSockToRemove();
+		void checkIfEmptyChan();
 
 
 	private:
@@ -70,7 +71,6 @@ class Command
 		void sendToChannel(Channel *channel, bool is_notice);
 		std::vector<Channel *> getAllChannels();
 		Channel *findChan(std::string chan_name);
-		void checkIfEmptyChan();
 		std::vector<Channel *>::iterator returnItChan(std::string chan_name);
 		void clearChan(Channel *chan, Client *client);
 

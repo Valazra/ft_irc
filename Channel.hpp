@@ -27,6 +27,8 @@ class Channel
 		void deleteClient(Client *client);
 		std::string getTime();
 		int howManyClients();
+		bool isChanOp();
+		void setChanOp(bool set);
 
 	private:
 		Channel();
@@ -37,6 +39,7 @@ class Channel
 		Client *_chan_operator;
 		std::string _topic;
 		bool _has_topic;
+		bool _is_chan_op;
 		std::string _creation_time_topic;
 };
 

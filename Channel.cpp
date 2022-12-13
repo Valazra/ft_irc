@@ -1,6 +1,6 @@
 #include "Channel.hpp"
 
-Channel::Channel(std::string name_chan, Client *client) : _name(name_chan), _list_clients(1, client), _chan_operator(client), _has_topic(false)
+Channel::Channel(std::string name_chan, Client *client) : _name(name_chan), _list_clients(1, client), _chan_operator(client), _has_topic(false), _is_chan_op(true)
 {
 }
 
@@ -16,11 +16,6 @@ std::string Channel::getName()
 std::vector<Client *> *Channel::getListClients()
 {
 	return (&_list_clients);
-}
-
-Client *Channel::getChannelOperator()
-{
-	return (_chan_operator);
 }
 
 std::string Channel::getTopic()
@@ -96,3 +91,19 @@ std::string Channel::getTime()
 
 	return (return_s);
 }
+
+void Channel::setChanOp(bool set)
+{
+	_is_chan_op = set;
+}
+
+bool Channel::isChanOp()
+{
+	return(_is_chan_op);
+}
+
+Client *Channel::getChannelOperator()
+{
+	return (_chan_operator);
+}
+
