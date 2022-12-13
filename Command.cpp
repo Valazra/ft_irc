@@ -1038,7 +1038,7 @@ void Command::sendToClient(int numeric_replies)
 			}
 		case 4: //RPL_MYINFO
 			{
-				msg += _client->getServername() + " version [ft_irc]. Available user MODE : +o . Avalaible channel MODE : none. \r\n";
+				msg += _client->getServername() + " version [ft_irc]. Available user MODE : +O . Avalaible channel MODE : none. \r\n";
 				break;
 			}
 		case 5: //RPL_ISUPPORT

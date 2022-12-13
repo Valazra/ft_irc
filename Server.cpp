@@ -204,7 +204,13 @@ void Server::check_new_client()
 }
 
 void	Server::removeClient(int const sock_to_remove)
-{
+{	
+	std::vector<Channel *>* listChannels = ((_clients)[sock_to_remove])->getClientChannels();
+	for(std::vector<Channel *>::iterator it = listChannels->begin() ; it != listChannels->end() ; ++it)
+	{
+		(*it)->deleteClient((_clients)[sock_to_remove]);
+	}
+	((_clients)[sock_to_remove])->leaveAllChannels();
 	close(sock_to_remove);
 	delete (_clients)[sock_to_remove];
 	_clients.erase(sock_to_remove);
