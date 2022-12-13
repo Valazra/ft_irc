@@ -58,6 +58,9 @@ class Client
 		void leaveAllChannels();
 		void setServername(std::string name);
 		std::string getServername();
+		void setCorrectPassOn();
+		bool getCorrectPass();
+
 
 	private:
 		Client();
@@ -80,6 +83,7 @@ class Client
 		std::vector<std::vector<std::string> > _cmd;
 		bool		_oper;
 		std::vector<Channel *> _client_channels;
+		bool		_correct_pass;
 };
 
 #endif

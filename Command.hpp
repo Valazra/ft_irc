@@ -86,7 +86,6 @@ class Command
 		std::vector<std::string> _cmd_list;
 		//Conf
 		std::string _password;
-		bool _correctPass;
 		std::string	_oper_name;
 		std::string	_oper_pass;
 		//Channels

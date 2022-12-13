@@ -1,7 +1,7 @@
 #include "Command.hpp"
 
 Command::Command(std::map<int, Client *> *client_map, std::string password, bool *fatal_error):
-	_clients_ptr(client_map), _password(password), _correctPass(false), _oper_name("coco"), _oper_pass("toto"), _bad_chan_name(), _bad_chan_bool(false), _bad_nickname(), _fatal_error(fatal_error), _creationTime(getTime()) 
+	_clients_ptr(client_map), _password(password), _oper_name("coco"), _oper_pass("toto"), _bad_chan_name(), _bad_chan_bool(false), _bad_nickname(), _fatal_error(fatal_error), _creationTime(getTime()) 
 {
 	_cmd_list.push_back("MODE");
 	_cmd_list.push_back("OPER");
@@ -67,7 +67,6 @@ void Command::execCmd()
 {
 	for (std::vector<std::vector<std::string> >::iterator it = (*_cmd).begin(); it != (*_cmd).end(); ++it)
 	{
-//		_sock_to_remove == -1;
 		if ((it->empty()))
 			return ;
 		if (DEBUG)
@@ -114,8 +113,9 @@ void	Command::pass()
 {
 	if (DEBUG)
 	{
+		std::cout << "Command::pass" << std::endl;
 		if ((*_cmd)[_actual_cmd].size() > 1)
-			std::cout << "Command::pass | Pass attendu = " << _password << " | Pass recu = " << (*_cmd)[_actual_cmd][1] << std::endl;
+			std::cout << "Pass attendu = " << _password << " | Pass recu = " << (*_cmd)[_actual_cmd][1] << std::endl;
 	}
 	if (_client->getStatus() != TO_REGISTER)
 	{
@@ -127,17 +127,18 @@ void	Command::pass()
 		sendToClient(461); //ERR_NEEDMOREPARAMS
 		return ;
 	}
-	std::string tmp = (*_cmd)[_actual_cmd][1];
-	for(std::vector<std::string>::iterator it = (*_cmd)[_actual_cmd].begin() + 2 ; it != (*_cmd)[_actual_cmd].end() ; ++it)
-		tmp += " " + *it;
-	if (tmp != _password)
+	else if ((*_cmd)[_actual_cmd].size() > 2)
+	{
+		return ;
+	}
+	if ((*_cmd)[_actual_cmd][1] != _password)
 	{
 		sendToClient(464); //ERR_PASSWDMISMATCH
 		fatalError("You SHOULD connect with the good password.");
 		return ;
 	}
 	else
-		_correctPass = true;
+		_client->setCorrectPassOn();
 }
 
 // NICK
@@ -145,7 +146,7 @@ void	Command::nick()
 {
 	if (DEBUG)
 		std::cout << "Command::nick" << std::endl;
-	if (!_correctPass)
+	if (!_client->getCorrectPass())
 	{
 		sendToClient(464); //ERR_PASSWDMISMATCH
 		fatalError("You should connect with a password before NICK and USER.");
@@ -215,7 +216,7 @@ void	Command::user()
 {
 	if (DEBUG)
 		std::cout << "Command::user" << std::endl;
-	if (!_correctPass)
+	if (!_client->getCorrectPass())
 	{
 		sendToClient(464); //ERR_PASSWDMISMATCH
 		fatalError("You should connect with a password before NICK and USER.");
@@ -391,7 +392,6 @@ void	Command::msgJoin(std::string chan_name, Channel *finded_chan)
 	std::vector<Client *> *listClientsChan = finded_chan->getListClients();
 	for (std::vector<Client *>::iterator it = listClientsChan->begin() ; it != listClientsChan->end() ; ++it)
 		send((*it)->getSock(), msg.c_str(), msg.size(), 0);
-	// envoyer aussi rpl topic et le name reply le passer dans le for
 	if (finded_chan->getHasTopic() == true)
 		sendToClient(332); //RPL_TOPIC
 	nameReply(chan_name, finded_chan);
@@ -1301,7 +1301,7 @@ void Command::sendToClient(int numeric_replies)
 			}
 		default :
 			{
-				msg = "DEFAULT CASE\r\n";
+				msg = "\r\n";
 				break ;
 			}
 
@@ -1405,7 +1405,6 @@ void 	Command::checkIfEmptyChan()
 
 int Command::parsingNickname(std::string nickname)
 {
-	//find renvoie npos si aucune occurence n'a été trouvée, sinon ça renvoie l'endroit ou l'occurence à été trouvée
 	std::string forbidden(" ,*?!@.");
 	if (nickname.size() > 9)
 		return (0);
