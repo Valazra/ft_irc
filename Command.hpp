@@ -49,6 +49,7 @@ class Command
 		void invite();
 		void part();
 		void names();
+		void list();
 		void fatalError(std::string msg_error); //ERROR
 
 		//COMMANDS UTILS

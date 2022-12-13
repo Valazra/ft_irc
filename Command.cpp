@@ -20,6 +20,7 @@ Command::Command(std::map<int, Client *> *client_map, std::string password, bool
 	_cmd_list.push_back("INVITE");
 	_cmd_list.push_back("PART");
 	_cmd_list.push_back("NAMES");
+	_cmd_list.push_back("LIST");
 	_cmd_availables["MODE"] = &Command::mode;
 	_cmd_availables["OPER"] = &Command::oper;
 	_cmd_availables["CAP"] = &Command::cap;
@@ -37,6 +38,7 @@ Command::Command(std::map<int, Client *> *client_map, std::string password, bool
 	_cmd_availables["INVITE"] = &Command::invite;
 	_cmd_availables["PART"] = &Command::part;
 	_cmd_availables["NAMES"] = &Command::names;
+	_cmd_availables["LIST"] = &Command::names;
 }
 
 Command::~Command()
@@ -195,11 +197,14 @@ void	Command::nick()
 		_client->setAlreadyNickCmd(true);
 		if (_client->getAlreadyUserCmd())
 		{
-			sendToClient(1);
-			sendToClient(2);
-			sendToClient(3);
-			sendToClient(4);
-			sendToClient(5);
+			if (_client->getStatus() == TO_REGISTER)
+			{
+				sendToClient(1);
+				sendToClient(2);
+				sendToClient(3);
+				sendToClient(4);
+				sendToClient(5);
+			}
 		}
 	}
 }
@@ -620,6 +625,34 @@ void Command::nameReply(std::string chan_name, Channel *chan)
 	msg += "\r\n";
 	send(_client_socket, msg.c_str(), msg.size(), 0);
 	sendToClient(366); //RPL_ENDOFNAMES
+}
+
+// LIST
+void	Command::list()
+{
+	if (DEBUG)
+		std::cout << "Command::list" << std::endl;
+	if (_client->getStatus() == TO_REGISTER)
+	{
+		sendToClient(451); //ERR_NOTREGISTERED
+		return ;
+	}
+	if ((*_cmd)[_actual_cmd].size() == 1)
+	{
+		//on liste tous les chans
+		for(std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
+		{
+			
+		}
+	}
+	else if ((*_cmd)[_actual_cmd].size() == 2)
+	{
+		//on liste les chans specifies, possiblement separes par une virgule
+	}
+	else
+	{
+		//si trop de params on fait sans doute rien
+	}
 }
 
 // INVITE - We ignore last parameters if they are too many cause no numeric reply in RFC 2812 about it
@@ -1049,6 +1082,16 @@ void Command::sendToClient(int numeric_replies)
 		case 221: //RPL_UMODEIS
 			{
 				msg += _client->getUsername() + " " + _client->getOptions() + "\r\n";	
+				break ;
+			}
+		case 322: //RPL_LIST
+			{
+				msg += _client->getUsername() + " " + _actual_chan->getName() + " " + "\r\n";
+				break ;
+			}
+		case 323: //RPL_LISTEND
+			{
+				msg += _client->getUsername() + " :End of /LIST\r\n";
 				break ;
 			}
 		case 324: //RPL_CHANNELMODEIS
