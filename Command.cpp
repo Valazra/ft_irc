@@ -391,6 +391,7 @@ void	Command::msgJoin(std::string chan_name, Channel *finded_chan)
 	std::vector<Client *> *listClientsChan = finded_chan->getListClients();
 	for (std::vector<Client *>::iterator it = listClientsChan->begin() ; it != listClientsChan->end() ; ++it)
 		send((*it)->getSock(), msg.c_str(), msg.size(), 0);
+	// envoyer aussi rpl topic et le name reply le passer dans le for
 	if (finded_chan->getHasTopic() == true)
 		sendToClient(332); //RPL_TOPIC
 	nameReply(chan_name, finded_chan);
