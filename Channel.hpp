@@ -26,6 +26,7 @@ class Channel
 		void addClient(Client *client);
 		void deleteClient(Client *client);
 		std::string getTime();
+		int howManyClients();
 
 	private:
 		Channel();

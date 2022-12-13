@@ -77,6 +77,14 @@ void Channel::deleteClient(Client *client)
 	}
 }
 
+int	Channel::howManyClients()
+{
+	int i = 0;
+	for (std::vector<Client *>::iterator it = _list_clients.begin() ; it != _list_clients.end() ; ++it)
+		i++;
+	return (i);
+}
+
 std::string Channel::getTime()
 {
 	time_t     now = time(0);

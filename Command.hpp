@@ -106,6 +106,9 @@ class Command
 		void nameReply(std::string chan_name, Channel *chan);
 		//Join rply
 		void	msgJoin(std::string chan_name, Channel *finded_chan);
+		//List
+		void	listSingle(std::string chan);
+
 };
 
 #endif

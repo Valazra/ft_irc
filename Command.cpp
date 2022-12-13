@@ -38,7 +38,7 @@ Command::Command(std::map<int, Client *> *client_map, std::string password, bool
 	_cmd_availables["INVITE"] = &Command::invite;
 	_cmd_availables["PART"] = &Command::part;
 	_cmd_availables["NAMES"] = &Command::names;
-	_cmd_availables["LIST"] = &Command::names;
+	_cmd_availables["LIST"] = &Command::list;
 }
 
 Command::~Command()
@@ -642,17 +642,27 @@ void	Command::list()
 		//on liste tous les chans
 		for(std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
 		{
-			
+			_actual_chan = *it;
+			sendToClient(322);
 		}
+		sendToClient(323);
 	}
-	else if ((*_cmd)[_actual_cmd].size() == 2)
+	else if ((*_cmd)[_actual_cmd].size() >= 2)
 	{
-		//on liste les chans specifies, possiblement separes par une virgule
+		std::vector<std::string> split_chan = splitCommas((*_cmd)[_actual_cmd][1]);
+		for (std::vector<std::string>::iterator it = split_chan.begin() ; it != split_chan.end() ; ++it)
+			listSingle(*it);
+		sendToClient(323);
 	}
-	else
-	{
-		//si trop de params on fait sans doute rien
-	}
+}	
+
+void	Command::listSingle(std::string chan)
+{
+	Channel *finded_chan = findChan(chan);
+	if (!finded_chan) 
+		return ;
+	_actual_chan = finded_chan;
+	sendToClient(322);
 }
 
 // INVITE - We ignore last parameters if they are too many cause no numeric reply in RFC 2812 about it
@@ -1086,7 +1096,7 @@ void Command::sendToClient(int numeric_replies)
 			}
 		case 322: //RPL_LIST
 			{
-				msg += _client->getUsername() + " " + _actual_chan->getName() + " " + "\r\n";
+				msg += _client->getUsername() + " " + _actual_chan->getName() + " " + to_string(_actual_chan->howManyClients()) + " :" + _actual_chan->getTopic() + "\r\n";
 				break ;
 			}
 		case 323: //RPL_LISTEND
