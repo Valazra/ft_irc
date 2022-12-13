@@ -979,7 +979,7 @@ void	Command::notice()
 		}
 		return ;
 	}
-	else //CLient part
+	else //Client part
 	{
 		if (!checkNickname(target_name))
 		{
