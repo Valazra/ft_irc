@@ -20,6 +20,7 @@ _port(port), _pass(password), _fatal_error(false) ,_cmd(&_clients, password, &_f
 	if (setsockopt(listened_sock, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &enable, sizeof(enable)))
 	{
 		quit = true;
+		close(listened_sock);
 		return ;
 	}
 	// (IPv4 only--see struct sockaddr_in6 for IPv6)
@@ -55,11 +56,13 @@ _port(port), _pass(password), _fatal_error(false) ,_cmd(&_clients, password, &_f
 	*/
 	if (bind(listened_sock, (struct sockaddr *)&addr, sizeof(addr)) < 0)
 	{
+		close(listened_sock);
 		quit = true;
 		return ;
 	}
 	if (listen(listened_sock, MAX_CLIENTS) < 0)
 	{
+		close(listened_sock);
 		quit = true;
 		return ;
 	}
