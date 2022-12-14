@@ -13,7 +13,7 @@
 # include <stdio.h>
 # include <time.h>
 # include "main.h"
-# define DEBUG 1
+# define DEBUG 0
 
 class Server;
 class Command
