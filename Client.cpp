@@ -21,14 +21,13 @@ _already_user_cmd(false), _already_nick_cmd(false), _sock(sock), _msg_finish(0),
 
 void Client::receive()
 {
-	char buffer[MAX_CHAR + 1]; //VALIDER LA TAILLE DE MAX_CHAR ???
+	char buffer[MAX_CHAR + 1];
 	memset(buffer, 0, MAX_CHAR);
 	if (_msg_finish)
 	{
 		_msg.clear();
 		_msg_finish = 0;
 	}
-	//exception error plutot que return?
 	ssize_t size;
 	if ((size = recv(_sock, &buffer, MAX_CHAR, 0)) == -1)
 	{
@@ -152,7 +151,6 @@ void Client::setUsername(std::string username)
 	_username = username;
 }
 
-//dans USER (on suppr les ":" au debut)
 void Client::setRealname(std::string realname)
 {
 	realname.erase(realname.begin());

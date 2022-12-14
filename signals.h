@@ -1,5 +1,5 @@
-#ifndef SIGNALS_HPP
-# define SIGNALS_HPP
+#ifndef SIGNALS_H
+# define SIGNALS_H
 
 # include <signal.h>
 # include "Server.hpp"

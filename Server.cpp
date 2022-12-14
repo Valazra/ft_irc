@@ -25,20 +25,6 @@ _port(port), _pass(password), _fatal_error(false) ,_cmd(&_clients, password, &_f
 		quit = true;
 		return ;
 	}
-	/*
-	 * int fcntl(int fd, int cmd, ... * arg *);
-	 * fcntl() performs one of the operations described below on the open file
-	 * descriptor fd.  The operation is determined by cmd. 
-	 * F_SETFL  Set the file status flags to the value specified by arg
-	 * Lots of functions block. accept() blocks. All the recv() functions block. The reason they can do this is because they're allowed to. When you first create the socket descriptor with socket(), the kernel sets it to blocking. If you don't want a socket to be blocking, you have to make a call to fcntl():
-	*/
-/*
-	if (fcntl(listened_sock, F_SETFL, O_NONBLOCK) < 0)
-	{
-		quit = true;
-		return ;
-	}
-*/
 	// (IPv4 only--see struct sockaddr_in6 for IPv6)
 	/*
 	   To deal with struct sockaddr, programmers created a parallel structure: struct sockaddr_in (“in” for “Internet”) to be used with IPv4.
@@ -75,7 +61,6 @@ _port(port), _pass(password), _fatal_error(false) ,_cmd(&_clients, password, &_f
 		quit = true;
 		return ;
 	}
-	//10 est le nombre max de clients à faire la queue VERIF QUE C BIEN MAX CLIENT
 	if (listen(listened_sock, MAX_CLIENTS) < 0)
 	{
 		quit = true;

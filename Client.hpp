@@ -1,7 +1,6 @@
 #ifndef CLIENT_HPP
 # define CLIENT_HPP
 
-# define MAX_CHAR 4096
 # include <iostream>
 # include <unistd.h>
 # include <sys/socket.h>
@@ -11,6 +10,7 @@
 # include <fcntl.h>
 # include <vector>
 # include <string>
+# define MAX_CHAR 4096
 
 enum userStatus
 {

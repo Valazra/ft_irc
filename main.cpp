@@ -1,5 +1,5 @@
 #include "Server.hpp"
-#include "signals.hpp"
+#include "signals.h"
 #include "main.h"
 
 bool quit = false;

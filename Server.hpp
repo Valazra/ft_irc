@@ -18,8 +18,6 @@
 # include "Client.hpp"
 # include "Command.hpp"
 # include "main.h"
-
-# define PING 60
 # define MAX_CLIENTS 10
 
 class Server

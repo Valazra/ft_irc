@@ -896,9 +896,8 @@ void	Command::privmsg()
 		sendToClient(412); //ERR_NOTEXTTOSEND
 		return ;
 	}
-	std::vector<std::string> split_targets = splitCommas((*_cmd)[_actual_cmd][1]);
-	for (std::vector<std::string>::iterator it = split_targets.begin() ; it != split_targets.end() ; ++it)
-		sendPrivMsg(*it);
+	std::string target_name = (*_cmd)[_actual_cmd][1];
+	sendPrivMsg(target_name);
 }
 
 void	Command::sendPrivMsg(std::string target)
