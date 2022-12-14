@@ -648,7 +648,6 @@ void	Command::list()
 	}
 	if ((*_cmd)[_actual_cmd].size() == 1)
 	{
-		//on liste tous les chans
 		for(std::vector<Channel *>::iterator it = _all_channels.begin() ; it != _all_channels.end() ; ++it)
 		{
 			_actual_chan = *it;

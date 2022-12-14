@@ -1,22 +1,9 @@
 #include "Client.hpp"
 #include "Server.hpp"
 
-Client::Client(int sock, struct sockaddr_in address):
-_already_user_cmd(false), _already_nick_cmd(false), _sock(sock), _msg_finish(0), _status(TO_REGISTER), _hostname(),_nickname(), _username(), _realname(), _server_name(), _oper(false), _client_channels(), _correct_pass(false)
+Client::Client(int sock):
+_already_user_cmd(false), _already_nick_cmd(false), _sock(sock), _msg_finish(0), _status(TO_REGISTER), _nickname(), _username(), _realname(), _server_name(), _oper(false), _client_channels(), _correct_pass(false)
 {
-//	fcntl(sock, F_SETFL, O_NONBLOCK);
-	char hostname[NI_MAXHOST];
-
-	//getnameinfo(struct sockaddr *addr, socklen_t salen, char *host, size_t hostlen, char *serv, size_t servlen, int flags)
-	//NI_MAXHOST = 1025 et NI_MAXSERV = 32 (taille des buffers), c'est <netdb.h> qui definit ces constantes
-	//NI_NUMERICSERV ---> si cet attribut est défini, l'adresse du service est renvoyée sous forme numérique
-	if (getnameinfo((struct sockaddr *)&address, sizeof(address), hostname, NI_MAXHOST, NULL, 0, NI_NUMERICSERV) != 0)
-	{
-		quit = true;
-		return ;
-	}
-	else
-		this->_hostname = hostname;
 }
 
 void Client::receive()
@@ -134,11 +121,6 @@ std::string Client::getUsername()
 std::string Client::getRealname()
 {
 	return (_realname);
-}
-
-std::string Client::getHostname()
-{
-	return (_hostname);
 }
 
 void Client::setNickname(std::string nickname)

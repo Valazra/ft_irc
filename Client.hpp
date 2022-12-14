@@ -25,7 +25,7 @@ class Command;
 class Client
 {
 	public:
-		Client(int sock, struct sockaddr_in address);
+		Client(int sock);
 		~Client();
 		userStatus getStatus();
 		void setStatus(userStatus status);
@@ -74,7 +74,6 @@ class Client
 		int		_sock;
 		bool		_msg_finish;
 		userStatus	_status;
-		std::string	_hostname;
 		std::string	_nickname;
 		std::string	_username;
 		std::string	_realname;

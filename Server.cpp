@@ -16,10 +16,7 @@ _port(port), _pass(password), _fatal_error(false) ,_cmd(&_clients, password, &_f
 	// manipulate options for the socket referred to by the file descriptor sockfd
 	// SOL_SOCKET is the socket layer itself. It is used for options that are protocol independent.
 	// SO_REUSEADDR This option controls whether bind should permit reuse of local addresses for this socket. If you enable this option, you can actually have two sockets with the same Internet port number; but the system won’t allow you to use the two identically-named sockets in a way that would confuse the Internet. The reason for this option is that some higher-level Internet protocols, including FTP, require you to keep reusing the same port number.
-	/*
-	 *Sometimes, you might notice, you try to rerun a server and bind() fails, claiming “Address already in use.” What does that mean? Well, a little bit of a socket that was connected is still hanging around in the kernel, and it’s hogging the port. You can either wait for it to clear (a minute or so), or add code to your program allowing it to reuse the port, like this:
-	 */
-	int enable = 1; // CHECK ENABLE
+	int enable = 1; 
 	if (setsockopt(listened_sock, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &enable, sizeof(enable)))
 	{
 		quit = true;
@@ -101,8 +98,6 @@ void Server::run()
 	 //fds is our array of information (which sockets to monitor for what),
 	 //nfds is the count of elements in the array, and timeout is a timeout in milliseconds.
 	 //It returns the number of elements in the array that have had an event occur.
-	 //TO DO: try to treat if poll encounter error??
-
 	if (poll(&_fds[0], _fds.size(), -1) == -1)
 	{
 		if (DEBUG)
@@ -161,11 +156,9 @@ void Server::run()
 void Server::check_new_client()
 {
 	//int shutdown(int sockfd, int how);
-	// The shutdown() call causes all or part of a full-duplex
-    //  connection on the socket associated with sockfd to be shut down.
+	//The shutdown() call causes all or part of a full-duplex
+    	//connection on the socket associated with sockfd to be shut down.
 	//If how is SHUT_RD, further receptions will be disallowed
-	//donc en gros on dit qu'on prendra plus de nouveaux clients a notre
-	//listened socket
 	if (_clients.size() == MAX_CLIENTS) 
 	{
 		if (shutdown(_fds[0].fd, SHUT_RD) == -1)
@@ -184,7 +177,7 @@ void Server::check_new_client()
 	}
 	if (DEBUG)
 		std::cout << new_client_sock << std::endl;
-	_clients[new_client_sock] = new Client(new_client_sock, addr);
+	_clients[new_client_sock] = new Client(new_client_sock);
 	_fds.push_back(pollfd());
 	_fds.back().fd = new_client_sock;
 	_fds.back().events = POLLIN;
