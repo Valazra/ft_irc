@@ -2,7 +2,7 @@ NAME = ircserv
 
 COMPILER = c++
 
-FLAGS = -Wall -Wextra -Werror -g -std=c++98
+FLAGS = -Wall -Wextra -Werror -std=c++98 #-g
 
 SRCS = main.cpp Server.cpp Client.cpp Command.cpp Channel.cpp
 
