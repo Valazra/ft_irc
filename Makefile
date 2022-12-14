@@ -6,14 +6,16 @@ FLAGS = -Wall -Wextra -Werror -g -std=c++98
 
 SRCS = main.cpp Server.cpp Client.cpp Command.cpp Channel.cpp
 
+HEADER = main.h Server.hpp Client.hpp Command.hpp Channel.hpp to_string.hpp signals.h
+
 OBJ = $(SRCS:.cpp=.o)
 
-%.o: %.cpp
+%.o: %.cpp ${HEADER}
 	$(COMPILER) $(FLAGS) -c $< -o $@
 
 all:	$(NAME)
 
-$(NAME):	$(OBJ)
+$(NAME):	$(OBJ) ${HEADER}
 		$(COMPILER) $(FLAGS) -o $(NAME) $(OBJ)
 
 clean:
