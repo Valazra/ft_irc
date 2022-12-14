@@ -123,7 +123,7 @@ void Server::run()
 					removeClient((*it).fd);
 					_sock_to_remove.push_back((*it).fd);
 				}
-				else if (_clients[(*it).fd]->getMsgFinish()) //le _msg_finish change dans client.receive()
+				else if (_clients[(*it).fd]->getMsgFinish())
 				{
 					_fatal_error = false;
 					_cmd.readCmd((*it).fd);
