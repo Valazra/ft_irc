@@ -227,7 +227,7 @@ void	Command::user()
 		sendToClient(462); //ERR_ALREADYREGISTERED
 		return ;
 	}
-	else if ((*_cmd)[_actual_cmd].size() < 4)
+	else if ((*_cmd)[_actual_cmd].size() < 5)
 	{
 		sendToClient(461); //ERR_NEEDMOREPARAMS
 		return ;

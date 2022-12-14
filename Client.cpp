@@ -4,7 +4,7 @@
 Client::Client(int sock, struct sockaddr_in address):
 _already_user_cmd(false), _already_nick_cmd(false), _sock(sock), _msg_finish(0), _status(TO_REGISTER), _hostname(),_nickname(), _username(), _realname(), _server_name(), _oper(false), _client_channels(), _correct_pass(false)
 {
-	fcntl(sock, F_SETFL, O_NONBLOCK);
+//	fcntl(sock, F_SETFL, O_NONBLOCK);
 	char hostname[NI_MAXHOST];
 
 	//getnameinfo(struct sockaddr *addr, socklen_t salen, char *host, size_t hostlen, char *serv, size_t servlen, int flags)
