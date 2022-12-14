@@ -815,7 +815,6 @@ void	Command::mode()
 		return ;
 	}
 	std::string target_name = (*_cmd)[_actual_cmd][1];
-	_cmd_availables["TOPIC"] = &Command::topic;
 	if ((*_cmd)[_actual_cmd][1][0] == '#')
 	{
 		//Channel part
@@ -1134,7 +1133,7 @@ void Command::sendToClient(int numeric_replies)
 			}
 		case 324: //RPL_CHANNELMODEIS
 			{
-				msg += _client->getUsername() + " " + _actual_chan->getName() + " \r\n"; //if modes are implements they are after chan name	
+				msg += _client->getUsername() + " " + _actual_chan->getName() + "  \r\n"; 
 				break ;
 			}
 		case 331: //RPL_NOTOPIC
